@@ -118,7 +118,7 @@ function analyzeVideo() {
 
   // -------------------------
   // 結果表示
-  -------------------------
+  // -------------------------
   document.getElementById("pelvisResult").textContent =
     `骨盤傾斜：${pelvisTilt.toFixed(1)}°`;
 
