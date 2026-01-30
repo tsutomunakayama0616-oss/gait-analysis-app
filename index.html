@@ -187,33 +187,6 @@
       font-weight: 600;
       margin-bottom: 10px;
     }
-
-    .indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 14px;
-      margin-top: 4px;
-    }
-
-    .indicator-dot {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
-
-    .indicator-dot.blue {
-      background: #007aff;
-    }
-
-    .indicator-dot.yellow {
-      background: #ffcc00;
-    }
-
-    .indicator-dot.red {
-      background: #ff3b30;
-    }
   </style>
 </head>
 
@@ -227,7 +200,7 @@
     <!-- モード切替 -->
     <div class="mode-switch">
       <button id="liveModeBtn" class="mode-button active">📸 撮影補助</button>
-      <button id="videoModeBtn" class="mode-button">🎥 動画解析</button>
+      <button id="videoModeBtn" class="mode-button">🎥 動作解析</button>
     </div>
 
     <!-- 撮影補助モード -->
@@ -255,10 +228,10 @@
       </div>
     </section>
 
-    <!-- 動画解析モード -->
+    <!-- 動作解析モード -->
     <section id="videoSection" class="section">
       <div class="card">
-        <h2 style="margin-top: 0">🎥 動画解析モード</h2>
+        <h2 style="margin-top: 0">🎥 動作解析モード</h2>
 
         <label>手術日：</label>
         <input type="date" id="surgeryDate" style="width: 100%; margin-top: 6px" />

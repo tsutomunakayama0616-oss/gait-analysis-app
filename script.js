@@ -27,7 +27,6 @@ let previousSymmetry = null;
 async function initPoseLandmarker() {
   if (poseLandmarker) return;
 
-  // Safari などで MediaPipe のモジュールがまだ読めていない場合に備えてガード
   if (
     !window.FilesetResolver ||
     !window.PoseLandmarker ||
@@ -76,7 +75,7 @@ document.getElementById("surgeryDate").addEventListener("change", () => {
 });
 
 /* ---------------------------------------------------------
-   モード切替（撮影補助 ↔ 動画解析）
+   モード切替（撮影補助 ↔ 動作解析）
 --------------------------------------------------------- */
 document.getElementById("liveModeBtn").addEventListener("click", () => {
   document.getElementById("liveSection").classList.add("active");
@@ -209,7 +208,7 @@ document.getElementById("stopLiveBtn").addEventListener("click", () => {
 });
 
 /* ---------------------------------------------------------
-   動画解析モード：動画読み込み
+   動作解析モード：動画読み込み（動画は1つだけ）
 --------------------------------------------------------- */
 let loadedVideoURL = null;
 
@@ -285,8 +284,9 @@ function updateCompareChart() {
 }
 
 /* ---------------------------------------------------------
-   動画解析：骨格描画＋骨盤傾斜・股関節角度（最大値）＋歩行速度
+   動作解析：骨格描画＋骨盤傾斜・股関節角度（最大値）＋歩行速度
    ＋ 歩行の安定性・左右差（前回比較）＋折れ線グラフ
+   ※ 動画再生中は常に骨格モデルを重ね描画
 --------------------------------------------------------- */
 async function analyzeVideo() {
   if (!loadedVideoURL) {
@@ -343,7 +343,7 @@ async function analyzeVideo() {
     if (result && result.landmarks && result.landmarks.length > 0) {
       const lm = result.landmarks[0];
 
-      // 描画
+      // 描画（動画再生中は常に骨格モデルを重ねる）
       drawingUtils.drawLandmarks(lm, {
         radius: 3,
         color: "#ff3b30",
@@ -445,37 +445,37 @@ async function analyzeVideo() {
 
     // 歩行の安定性
     if (previousStability === null) {
-      stabilityElem.innerHTML =
+      stabilityElem.textContent =
         "歩行の安定性：今回が初回の測定です。前回との比較はありません。";
     } else {
       const diff = currentStability - previousStability;
       if (diff > threshold) {
-        stabilityElem.innerHTML =
-          '<div class="indicator"><span class="indicator-dot blue"></span>歩行の安定性：青い〇印：良くなってきています</div>';
+        stabilityElem.textContent =
+          "歩行の安定性：良くなってきています";
       } else if (Math.abs(diff) <= threshold) {
-        stabilityElem.innerHTML =
-          '<div class="indicator"><span class="indicator-dot yellow"></span>歩行の安定性：黄色〇印：変わりありません</div>';
+        stabilityElem.textContent =
+          "歩行の安定性：変わりありません";
       } else {
-        stabilityElem.innerHTML =
-          '<div class="indicator"><span class="indicator-dot red"></span>歩行の安定性：赤い〇印：悪くなっています</div>';
+        stabilityElem.textContent =
+          "歩行の安定性：悪くなっています";
       }
     }
 
     // 左右差
     if (previousSymmetry === null) {
-      symmetryElem.innerHTML =
+      symmetryElem.textContent =
         "左右差：今回が初回の測定です。前回との比較はありません。";
     } else {
       const diff = currentSymmetry - previousSymmetry;
       if (diff > threshold) {
-        symmetryElem.innerHTML =
-          '<div class="indicator"><span class="indicator-dot blue"></span>左右差：青い〇印：良くなってきています</div>';
+        symmetryElem.textContent =
+          "左右差：良くなってきています";
       } else if (Math.abs(diff) <= threshold) {
-        symmetryElem.innerHTML =
-          '<div class="indicator"><span class="indicator-dot yellow"></span>左右差：黄色〇印：変わりありません</div>';
+        symmetryElem.textContent =
+          "左右差：変わりありません";
       } else {
-        symmetryElem.innerHTML =
-          '<div class="indicator"><span class="indicator-dot red"></span>左右差：悪くなっています</div>';
+        symmetryElem.textContent =
+          "左右差：悪くなっています";
       }
     }
 
