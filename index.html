@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>歩行解析アプリ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json" />
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js");
@@ -14,14 +14,17 @@
   </script>
 
   <!-- フォント -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- MediaPipe -->
+  <!-- MediaPipe PoseLandmarker -->
   <script type="module">
     import {
       PoseLandmarker,
@@ -50,11 +53,13 @@
       background: white;
       border-bottom: 1px solid #e5e5ea;
     }
+
     .title {
       font-size: 22px;
       font-weight: 700;
       color: #111;
     }
+
     .subtitle {
       font-size: 14px;
       margin-top: 4px;
@@ -72,7 +77,7 @@
       background: white;
       padding: 16px;
       border-radius: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
       margin-bottom: 16px;
     }
 
@@ -81,6 +86,7 @@
       gap: 8px;
       margin-bottom: 16px;
     }
+
     .mode-button {
       flex: 1;
       padding: 12px;
@@ -91,28 +97,36 @@
       color: #333;
       font-weight: 600;
     }
+
     .mode-button.active {
       background: #007aff;
       color: white;
     }
 
-    .section { display: none; }
-    .section.active { display: block; }
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
 
     .checklist {
       background: white;
       padding: 14px;
       border-radius: 12px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
       margin-bottom: 16px;
       font-size: 15px;
     }
+
     .checklist label {
       display: block;
       margin-bottom: 8px;
     }
 
-    video, canvas {
+    video,
+    canvas {
       width: 100%;
       max-width: 100%;
       border-radius: 12px;
@@ -129,10 +143,14 @@
       width: 100%;
       margin-top: 10px;
       font-weight: 600;
-      box-shadow: 0 3px 6px rgba(0,122,255,0.3);
+      box-shadow: 0 3px 6px rgba(0, 122, 255, 0.3);
       transition: 0.15s;
     }
-    button:active { transform: scale(0.97); }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
     button:disabled {
       background: #c7c7cc;
       box-shadow: none;
@@ -142,7 +160,7 @@
       background: white;
       padding: 16px;
       border-radius: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
       margin-top: 20px;
       font-size: 15px;
     }
@@ -154,7 +172,9 @@
       border-radius: 12px;
       padding: 10px;
     }
-    th, td {
+
+    th,
+    td {
       padding: 8px;
       text-align: center;
     }
@@ -167,18 +187,6 @@
       font-weight: 600;
       margin-bottom: 10px;
     }
-    .gait-status-green {
-      background: #34c75933;
-      color: #34c759;
-    }
-    .gait-status-yellow {
-      background: #ffcc0033;
-      color: #ffcc00;
-    }
-    .gait-status-red {
-      background: #ff3b3033;
-      color: #ff3b30;
-    }
   </style>
 </head>
 
@@ -189,7 +197,6 @@
   </header>
 
   <div class="container">
-
     <!-- モード切替 -->
     <div class="mode-switch">
       <button id="liveModeBtn" class="mode-button active">📸 撮影補助</button>
@@ -199,12 +206,12 @@
     <!-- 撮影補助モード -->
     <section id="liveSection" class="section active">
       <div class="card">
-        <h2 style="margin-top:0;">📸 撮影補助モード</h2>
+        <h2 style="margin-top: 0">📸 撮影補助モード</h2>
 
         <div class="checklist">
-          <label><input type="checkbox" class="precheck"> 後ろから撮影している</label>
-          <label><input type="checkbox" class="precheck"> 全身が映っている</label>
-          <label><input type="checkbox" class="precheck"> 普段どおりの速度で歩いている</label>
+          <label><input type="checkbox" class="precheck" /> 後ろから撮影している</label>
+          <label><input type="checkbox" class="precheck" /> 全身が映っている</label>
+          <label><input type="checkbox" class="precheck" /> 普段どおりの速度で歩いている</label>
         </div>
 
         <video id="liveVideo" playsinline muted></video>
@@ -214,44 +221,40 @@
         <button id="stopLiveBtn">カメラ停止</button>
 
         <div id="liveStatus"></div>
-        <div id="liveError" style="color:red;"></div>
+        <div id="liveError" style="color: red"></div>
       </div>
     </section>
 
     <!-- 動画解析モード -->
     <section id="videoSection" class="section">
       <div class="card">
-        <h2 style="margin-top:0;">🎥 動画解析モード</h2>
+        <h2 style="margin-top: 0">🎥 動画解析モード</h2>
 
         <label>手術日：</label>
-        <input type="date" id="surgeryDate" style="width:100%; margin-top:6px;">
-        <div id="surgeryDiffText" style="margin-top:6px; font-size:14px; color:#555;"></div>
+        <input type="date" id="surgeryDate" style="width: 100%; margin-top: 6px" />
+        <div id="surgeryDiffText" style="margin-top: 6px; font-size: 14px; color: #555"></div>
 
-        <input type="file" id="videoFileInput" accept="video/*" style="margin-top:12px;">
+        <input type="file" id="videoFileInput" accept="video/*" style="margin-top: 12px" />
         <button id="analyzeVideoBtn">動画を解析</button>
 
         <video id="analysisVideo" controls></video>
         <canvas id="analysisCanvas"></canvas>
 
         <div id="videoStatus"></div>
-        <div id="videoError" style="color:red;"></div>
+        <div id="videoError" style="color: red"></div>
 
-        <div id="resultBox" class="result-box" style="display:none;">
-          <div class="gait-status-badge" id="gaitStatusBadge"></div>
+        <div id="resultBox" class="result-box" style="display: none">
           <div id="pelvisResult"></div>
           <div id="hipAbductionResult"></div>
           <div id="hipAdductionResult"></div>
           <div id="speedResult"></div>
 
-          <div id="gaitFeatureText" style="margin-top:10px;"></div>
-          <ul id="exerciseList"></ul>
-
-          <div style="font-size:12px; color:#666; margin-top:10px;">
+          <div style="font-size: 12px; color: #666; margin-top: 10px">
             ※この結果は診断ではありません。気になる場合は医療スタッフにご相談ください。
           </div>
         </div>
 
-        <h3 style="margin-top:20px;">回復過程の比較</h3>
+        <h3 style="margin-top: 20px">回復過程の比較</h3>
         <table id="resultTable">
           <thead>
             <tr>
@@ -265,12 +268,12 @@
           <tbody></tbody>
         </table>
 
-        <canvas id="compareChart" style="margin-top:16px;"></canvas>
+        <canvas id="compareChart" style="margin-top: 16px"></canvas>
       </div>
     </section>
-
   </div>
 
+  <!-- script.js 読み込み（通常スクリプト） -->
   <script src="script.js"></script>
 </body>
 </html>
