@@ -68,7 +68,6 @@
       padding: 14px;
     }
 
-    /* カードUI */
     .card {
       background: white;
       padding: 16px;
@@ -77,7 +76,6 @@
       margin-bottom: 16px;
     }
 
-    /* モード切替 */
     .mode-switch {
       display: flex;
       gap: 8px;
@@ -101,7 +99,6 @@
     .section { display: none; }
     .section.active { display: block; }
 
-    /* チェックリスト */
     .checklist {
       background: white;
       padding: 14px;
@@ -115,7 +112,6 @@
       margin-bottom: 8px;
     }
 
-    /* 動画・キャンバス */
     video, canvas {
       width: 100%;
       max-width: 100%;
@@ -123,7 +119,6 @@
       margin-top: 12px;
     }
 
-    /* iOS風ボタン */
     button {
       padding: 14px;
       font-size: 16px;
@@ -143,7 +138,6 @@
       box-shadow: none;
     }
 
-    /* 結果ボックス */
     .result-box {
       background: white;
       padding: 16px;
@@ -153,7 +147,6 @@
       font-size: 15px;
     }
 
-    /* テーブル */
     table {
       width: 100%;
       font-size: 14px;
@@ -166,7 +159,6 @@
       text-align: center;
     }
 
-    /* バッジ */
     .gait-status-badge {
       display: inline-block;
       padding: 6px 12px;
@@ -210,9 +202,9 @@
         <h2 style="margin-top:0;">📸 撮影補助モード</h2>
 
         <div class="checklist">
+          <label><input type="checkbox" class="precheck"> 後ろから撮影している</label>
           <label><input type="checkbox" class="precheck"> 全身が映っている</label>
-          <label><input type="checkbox" class="precheck"> 横から撮影している</label>
-          <label><input type="checkbox" class="precheck"> 普段どおり歩いている</label>
+          <label><input type="checkbox" class="precheck"> 普段どおりの速度で歩いている</label>
         </div>
 
         <video id="liveVideo" playsinline muted></video>
@@ -231,12 +223,9 @@
       <div class="card">
         <h2 style="margin-top:0;">🎥 動画解析モード</h2>
 
-        <label>解析条件：</label>
-        <select id="surgeryStatus">
-          <option value="術前">術前</option>
-          <option value="術後">術後</option>
-        </select>
-        <input type="number" id="postOpDays" placeholder="術後日数（例：14）" style="width:100%; margin-top:8px;">
+        <label>手術日：</label>
+        <input type="date" id="surgeryDate" style="width:100%; margin-top:6px;">
+        <div id="surgeryDiffText" style="margin-top:6px; font-size:14px; color:#555;"></div>
 
         <input type="file" id="videoFileInput" accept="video/*" style="margin-top:12px;">
         <button id="analyzeVideoBtn">動画を解析</button>
@@ -250,7 +239,8 @@
         <div id="resultBox" class="result-box" style="display:none;">
           <div class="gait-status-badge" id="gaitStatusBadge"></div>
           <div id="pelvisResult"></div>
-          <div id="hipResult"></div>
+          <div id="hipAbductionResult"></div>
+          <div id="hipAdductionResult"></div>
           <div id="speedResult"></div>
 
           <div id="gaitFeatureText" style="margin-top:10px;"></div>
@@ -267,7 +257,8 @@
             <tr>
               <th>条件</th>
               <th>骨盤傾斜</th>
-              <th>股関節角度</th>
+              <th>股関節外転</th>
+              <th>股関節内転</th>
               <th>歩行速度</th>
             </tr>
           </thead>
@@ -280,7 +271,6 @@
 
   </div>
 
-  <!-- メインスクリプト -->
   <script type="module" src="script.js"></script>
 </body>
 </html>
