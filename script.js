@@ -22,9 +22,20 @@ let previousSymmetry = null;
 
 /* ---------------------------------------------------------
    MediaPipe PoseLandmarker 初期化
+   ※ グローバルでは呼ばず、必要なときに await で呼ぶ
 --------------------------------------------------------- */
 async function initPoseLandmarker() {
   if (poseLandmarker) return;
+
+  // Safari などで MediaPipe のモジュールがまだ読めていない場合に備えてガード
+  if (
+    !window.FilesetResolver ||
+    !window.PoseLandmarker ||
+    !window.DrawingUtils
+  ) {
+    console.error("MediaPipe がまだ読み込まれていません。");
+    return;
+  }
 
   const vision = await window.FilesetResolver.forVisionTasks(
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
@@ -41,8 +52,6 @@ async function initPoseLandmarker() {
 
   runningMode = "VIDEO";
 }
-
-initPoseLandmarker();
 
 /* ---------------------------------------------------------
    手術日 → 手術前◯日 / 手術後◯日 を自動表示
@@ -123,6 +132,12 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
   try {
     await initPoseLandmarker();
 
+    if (!poseLandmarker) {
+      document.getElementById("liveError").textContent =
+        "骨格モデルの読み込みに失敗しました。ネットワーク環境を確認してください。";
+      return;
+    }
+
     liveStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
       audio: false,
@@ -174,7 +189,7 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
   } catch (err) {
     console.error(err);
     document.getElementById("liveError").textContent =
-      "カメラを起動できませんでした。権限を確認してください。";
+      "カメラを起動できませんでした。権限や通信環境を確認してください。";
   }
 });
 
@@ -281,6 +296,12 @@ async function analyzeVideo() {
   }
 
   await initPoseLandmarker();
+
+  if (!poseLandmarker) {
+    document.getElementById("videoError").textContent =
+      "骨格モデルの読み込みに失敗しました。ネットワーク環境を確認してください。";
+    return;
+  }
 
   const video = document.getElementById("analysisVideo");
   const canvas = document.getElementById("analysisCanvas");
@@ -414,8 +435,6 @@ async function analyzeVideo() {
     }
 
     // 歩行の安定性・左右差（簡易指標）
-    // ・安定性：骨盤傾斜が小さいほど高い → 100 - maxPelvisTilt
-    // ・左右差：骨盤傾斜が小さいほど左右差が少ない → 100 - Math.abs(maxPelvisTilt)
     const currentStability = 100 - maxPelvisTilt;
     const currentSymmetry = 100 - Math.abs(maxPelvisTilt);
 
@@ -460,7 +479,6 @@ async function analyzeVideo() {
       }
     }
 
-    // 今回値を前回値として保存
     previousStability = currentStability;
     previousSymmetry = currentSymmetry;
 
