@@ -109,16 +109,13 @@ function analyzeVideo() {
   }
 
   // -------------------------
-  // 仮の解析結果（実際は MediaPipe で計算）
+  // 結果表示（仮の解析値）
   // -------------------------
   const pelvisTilt = 8.2;        // 骨盤傾斜
   const hipAbduction = 14.5;     // 股関節外転
   const hipAdduction = 6.3;      // 股関節内転
   const gaitSpeed = 0.92;        // 歩行速度
 
-  // -------------------------
-  // 結果表示
-  // -------------------------
   document.getElementById("pelvisResult").textContent =
     `骨盤傾斜：${pelvisTilt.toFixed(1)}°`;
 
