@@ -9,6 +9,17 @@ let videoAnimationId = null;
 
 let compareChart = null;
 
+// 解析履歴（グラフ用）
+const historyLabels = [];
+const historyPelvis = [];
+const historyHipAbd = [];
+const historyHipAdd = [];
+const historySpeed = [];
+
+// 前回値との比較用
+let previousStability = null;
+let previousSymmetry = null;
+
 /* ---------------------------------------------------------
    MediaPipe PoseLandmarker 初期化
 --------------------------------------------------------- */
@@ -197,7 +208,70 @@ document.getElementById("videoFileInput").addEventListener("change", (e) => {
 });
 
 /* ---------------------------------------------------------
+   グラフ更新
+--------------------------------------------------------- */
+function updateCompareChart() {
+  const ctx = document.getElementById("compareChart").getContext("2d");
+
+  if (compareChart) {
+    compareChart.destroy();
+  }
+
+  compareChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: historyLabels,
+      datasets: [
+        {
+          label: "骨盤傾斜（最大）",
+          data: historyPelvis,
+          borderColor: "#ff3b30",
+          backgroundColor: "rgba(255,59,48,0.1)",
+          tension: 0.3,
+        },
+        {
+          label: "股関節外転（最大）",
+          data: historyHipAbd,
+          borderColor: "#007aff",
+          backgroundColor: "rgba(0,122,255,0.1)",
+          tension: 0.3,
+        },
+        {
+          label: "股関節内転（最大）",
+          data: historyHipAdd,
+          borderColor: "#ffcc00",
+          backgroundColor: "rgba(255,204,0,0.1)",
+          tension: 0.3,
+        },
+        {
+          label: "歩行速度（推定）",
+          data: historySpeed,
+          borderColor: "#34c759",
+          backgroundColor: "rgba(52,199,89,0.1)",
+          tension: 0.3,
+          yAxisID: "y1",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          title: { display: true, text: "角度（度）" },
+        },
+        y1: {
+          position: "right",
+          title: { display: true, text: "速度（m/秒）" },
+          grid: { drawOnChartArea: false },
+        },
+      },
+    },
+  });
+}
+
+/* ---------------------------------------------------------
    動画解析：骨格描画＋骨盤傾斜・股関節角度（最大値）＋歩行速度
+   ＋ 歩行の安定性・左右差（前回比較）＋折れ線グラフ
 --------------------------------------------------------- */
 async function analyzeVideo() {
   if (!loadedVideoURL) {
@@ -295,7 +369,6 @@ async function analyzeVideo() {
       // 仮に：
       //  20°以上 → 外転優位
       //  10°未満 → 内転優位
-      //  それ以外 → 中間
       if (hipAngle >= 20 && hipAngle > maxHipAbduction) {
         maxHipAbduction = hipAngle;
       }
@@ -340,6 +413,57 @@ async function analyzeVideo() {
       gaitSpeed = distanceMeters / dt;
     }
 
+    // 歩行の安定性・左右差（簡易指標）
+    // ・安定性：骨盤傾斜が小さいほど高い → 100 - maxPelvisTilt
+    // ・左右差：骨盤傾斜が小さいほど左右差が少ない → 100 - Math.abs(maxPelvisTilt)
+    const currentStability = 100 - maxPelvisTilt;
+    const currentSymmetry = 100 - Math.abs(maxPelvisTilt);
+
+    const stabilityElem = document.getElementById("stabilityResult");
+    const symmetryElem = document.getElementById("symmetryResult");
+
+    const threshold = 1.0; // 変化判定のしきい値（度）
+
+    // 歩行の安定性
+    if (previousStability === null) {
+      stabilityElem.innerHTML =
+        "歩行の安定性：今回が初回の測定です。前回との比較はありません。";
+    } else {
+      const diff = currentStability - previousStability;
+      if (diff > threshold) {
+        stabilityElem.innerHTML =
+          '<div class="indicator"><span class="indicator-dot blue"></span>歩行の安定性：青い〇印：良くなってきています</div>';
+      } else if (Math.abs(diff) <= threshold) {
+        stabilityElem.innerHTML =
+          '<div class="indicator"><span class="indicator-dot yellow"></span>歩行の安定性：黄色〇印：変わりありません</div>';
+      } else {
+        stabilityElem.innerHTML =
+          '<div class="indicator"><span class="indicator-dot red"></span>歩行の安定性：赤い〇印：悪くなっています</div>';
+      }
+    }
+
+    // 左右差
+    if (previousSymmetry === null) {
+      symmetryElem.innerHTML =
+        "左右差：今回が初回の測定です。前回との比較はありません。";
+    } else {
+      const diff = currentSymmetry - previousSymmetry;
+      if (diff > threshold) {
+        symmetryElem.innerHTML =
+          '<div class="indicator"><span class="indicator-dot blue"></span>左右差：青い〇印：良くなってきています</div>';
+      } else if (Math.abs(diff) <= threshold) {
+        symmetryElem.innerHTML =
+          '<div class="indicator"><span class="indicator-dot yellow"></span>左右差：黄色〇印：変わりありません</div>';
+      } else {
+        symmetryElem.innerHTML =
+          '<div class="indicator"><span class="indicator-dot red"></span>左右差：悪くなっています</div>';
+      }
+    }
+
+    // 今回値を前回値として保存
+    previousStability = currentStability;
+    previousSymmetry = currentSymmetry;
+
     // 結果表示
     document.getElementById("pelvisResult").textContent =
       `骨盤傾斜（最大）：${maxPelvisTilt.toFixed(1)}°`;
@@ -372,8 +496,14 @@ async function analyzeVideo() {
     `;
     tbody.appendChild(row);
 
-    // グラフ更新（必要ならここで Chart.js を使う）
-    // 今はプレースホルダとして残しておく
+    // グラフ用履歴に追加
+    historyLabels.push(conditionLabel);
+    historyPelvis.push(maxPelvisTilt.toFixed(1));
+    historyHipAbd.push(maxHipAbduction.toFixed(1));
+    historyHipAdd.push(maxHipAdduction.toFixed(1));
+    historySpeed.push(gaitSpeed.toFixed(2));
+
+    updateCompareChart();
   }
 
   processFrame();

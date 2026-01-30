@@ -187,6 +187,33 @@
       font-weight: 600;
       margin-bottom: 10px;
     }
+
+    .indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .indicator-dot {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .indicator-dot.blue {
+      background: #007aff;
+    }
+
+    .indicator-dot.yellow {
+      background: #ffcc00;
+    }
+
+    .indicator-dot.red {
+      background: #ff3b30;
+    }
   </style>
 </head>
 
@@ -209,6 +236,9 @@
         <h2 style="margin-top: 0">📸 撮影補助モード</h2>
 
         <div class="checklist">
+          <div style="margin-bottom: 8px; font-size: 14px; color: #555;">
+            撮影するポイントです。全てにチェックをいれると，撮影が開始できます。
+          </div>
           <label><input type="checkbox" class="precheck" /> 後ろから撮影している</label>
           <label><input type="checkbox" class="precheck" /> 全身が映っている</label>
           <label><input type="checkbox" class="precheck" /> 普段どおりの速度で歩いている</label>
@@ -235,7 +265,7 @@
         <div id="surgeryDiffText" style="margin-top: 6px; font-size: 14px; color: #555"></div>
 
         <input type="file" id="videoFileInput" accept="video/*" style="margin-top: 12px" />
-        <button id="analyzeVideoBtn">動画を解析</button>
+        <button id="analyzeVideoBtn">動作を解析</button>
 
         <video id="analysisVideo" controls></video>
         <canvas id="analysisCanvas"></canvas>
@@ -248,6 +278,8 @@
           <div id="hipAbductionResult"></div>
           <div id="hipAdductionResult"></div>
           <div id="speedResult"></div>
+          <div id="stabilityResult" style="margin-top: 8px;"></div>
+          <div id="symmetryResult" style="margin-top: 4px;"></div>
 
           <div style="font-size: 12px; color: #666; margin-top: 10px">
             ※この結果は診断ではありません。気になる場合は医療スタッフにご相談ください。
