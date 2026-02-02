@@ -18,28 +18,33 @@ let previousStability = null;
 let previousSymmetry = null;
 let loadedVideoURL = null;
 
+// 録画用
+let mediaRecorder = null;
+let recordedChunks = [];
+let hasRecordedVideo = false;
+
 /* ---------------------------------------------------------
   セルフエクササイズ一覧（18種類）
 --------------------------------------------------------- */
 const exerciseList = [
-  { id:1, name:"ハムストリングス（大腿部後面）のストレッチ", url:"https://youtu.be/ihchQBuigY0" },
-  { id:2, name:"大腿四頭筋（大腿部前面）のストレッチ", url:"https://youtu.be/lVpF9TiepLg" },
-  { id:3, name:"腸腰筋（股関節前面）のストレッチ", url:"https://youtu.be/XIA80pBZ3ws" },
-  { id:4, name:"内転筋（大腿部内側）のストレッチ", url:"https://youtu.be/racb4M_hycM" },
-  { id:5, name:"下腿三頭筋（ふくらはぎ）のストレッチ", url:"https://youtu.be/Wbi5St1J9Kk" },
-  { id:6, name:"足首の上下（ポンプ）運動", url:"https://youtu.be/-inqX6tmDm8" },
-  { id:7, name:"大殿筋（お尻）の筋力増強運動（収縮のみ）", url:"https://youtu.be/4ckJ67_8IB8" },
-  { id:8, name:"大殿筋（お尻）の筋力増強運動（ブリッジ）", url:"https://youtu.be/9zKZ-YRmU8I" },
-  { id:9, name:"大殿筋（お尻）の筋力増強運動（立位）", url:"https://youtu.be/aikGoCaTFFI" },
-  { id:10, name:"大腿四頭筋（大腿部前面）の筋力増強運動（セッティング）", url:"https://youtu.be/rweyU-3O3zo" },
-  { id:11, name:"大腿四頭筋（大腿部前面）の筋力増強運動（SLR）", url:"https://youtu.be/fNM6w_RnVRk" },
-  { id:12, name:"中殿筋（殿部外側）の筋力増強運動（背臥位）", url:"https://youtu.be/UBN5jCP-ErM" },
-  { id:13, name:"中殿筋（殿部外側）の筋力増強運動（立位）", url:"https://youtu.be/0gKoLDR8HcI" },
-  { id:14, name:"バランス運動（タンデム）", url:"https://youtu.be/F0OVS9LT1w4" },
-  { id:15, name:"バランス運動（片脚立位）", url:"https://youtu.be/HUjoGJtiknc" },
+  { id:1, name:"太もものうしろを伸ばすストレッチ", url:"https://youtu.be/ihchQBuigY0" },
+  { id:2, name:"太ももの前を伸ばすストレッチ", url:"https://youtu.be/lVpF9TiepLg" },
+  { id:3, name:"股関節の前を伸ばすストレッチ", url:"https://youtu.be/XIA80pBZ3ws" },
+  { id:4, name:"内ももを伸ばすストレッチ", url:"https://youtu.be/racb4M_hycM" },
+  { id:5, name:"ふくらはぎを伸ばすストレッチ", url:"https://youtu.be/Wbi5St1J9Kk" },
+  { id:6, name:"足首を動かす運動（ポンプ運動）", url:"https://youtu.be/-inqX6tmDm8" },
+  { id:7, name:"おしりの筋肉を意識して力を入れる運動", url:"https://youtu.be/4ckJ67_8IB8" },
+  { id:8, name:"おしりの筋肉を使ったブリッジ運動", url:"https://youtu.be/9zKZ-YRmU8I" },
+  { id:9, name:"立ったまま行うおしりの筋トレ", url:"https://youtu.be/aikGoCaTFFI" },
+  { id:10, name:"太ももの前の筋肉を目覚めさせる運動", url:"https://youtu.be/rweyU-3O3zo" },
+  { id:11, name:"足を持ち上げる運動（SLR）", url:"https://youtu.be/fNM6w_RnVRk" },
+  { id:12, name:"横向きで行うおしりの横の筋トレ", url:"https://youtu.be/UBN5jCP-ErM" },
+  { id:13, name:"立って行うおしりの横の筋トレ", url:"https://youtu.be/0gKoLDR8HcI" },
+  { id:14, name:"前後に足を並べて立つバランス練習", url:"https://youtu.be/F0OVS9LT1w4" },
+  { id:15, name:"片脚立ちのバランス練習", url:"https://youtu.be/HUjoGJtiknc" },
   { id:16, name:"ウォーキング", url:"https://youtu.be/Cs4NOzgkS8s" },
-  { id:17, name:"自転車エルゴメータ", url:"https://youtu.be/12_J_pr-MUE" },
-  { id:18, name:"水中運動", url:"https://youtu.be/xqj3dn9mw50" }
+  { id:17, name:"自転車こぎの運動", url:"https://youtu.be/12_J_pr-MUE" },
+  { id:18, name:"水の中での運動", url:"https://youtu.be/xqj3dn9mw50" }
 ];
 
 /* ---------------------------------------------------------
@@ -94,7 +99,7 @@ function loadHistory() {
         <td>${Number(historyPelvis[i]).toFixed(1)}</td>
         <td>${Number(historyHipAbd[i]).toFixed(1)}</td>
         <td>${Number(historyHipAdd[i]).toFixed(1)}</td>
-        <td>${Number(historySpeed[i]).toFixed(3)}</td>
+        <td>${Number(historySpeed[i]).toFixed(1)}</td>
       `;
       tbody.appendChild(row);
     }
@@ -157,28 +162,8 @@ document.getElementById("surgeryDate").addEventListener("change", () => {
 });
 
 /* ---------------------------------------------------------
-  モード切替（撮影補助・動作解析・使用方法）
+  モード切替（使用方法・撮影補助・動作解析）
 --------------------------------------------------------- */
-document.getElementById("liveModeBtn").addEventListener("click", () => {
-  document.getElementById("liveSection").classList.add("active");
-  document.getElementById("videoSection").classList.remove("active");
-  document.getElementById("usageSection").classList.remove("active");
-
-  document.getElementById("liveModeBtn").classList.add("active");
-  document.getElementById("videoModeBtn").classList.remove("active");
-  document.getElementById("usageModeBtn").classList.remove("active");
-});
-
-document.getElementById("videoModeBtn").addEventListener("click", () => {
-  document.getElementById("videoSection").classList.add("active");
-  document.getElementById("liveSection").classList.remove("active");
-  document.getElementById("usageSection").classList.remove("active");
-
-  document.getElementById("videoModeBtn").classList.add("active");
-  document.getElementById("liveModeBtn").classList.remove("active");
-  document.getElementById("usageModeBtn").classList.remove("active");
-});
-
 document.getElementById("usageModeBtn").addEventListener("click", () => {
   document.getElementById("usageSection").classList.add("active");
   document.getElementById("liveSection").classList.remove("active");
@@ -187,6 +172,26 @@ document.getElementById("usageModeBtn").addEventListener("click", () => {
   document.getElementById("usageModeBtn").classList.add("active");
   document.getElementById("liveModeBtn").classList.remove("active");
   document.getElementById("videoModeBtn").classList.remove("active");
+});
+
+document.getElementById("liveModeBtn").addEventListener("click", () => {
+  document.getElementById("liveSection").classList.add("active");
+  document.getElementById("usageSection").classList.remove("active");
+  document.getElementById("videoSection").classList.remove("active");
+
+  document.getElementById("liveModeBtn").classList.add("active");
+  document.getElementById("usageModeBtn").classList.remove("active");
+  document.getElementById("videoModeBtn").classList.remove("active");
+});
+
+document.getElementById("videoModeBtn").addEventListener("click", () => {
+  document.getElementById("videoSection").classList.add("active");
+  document.getElementById("usageSection").classList.remove("active");
+  document.getElementById("liveSection").classList.remove("active");
+
+  document.getElementById("videoModeBtn").classList.add("active");
+  document.getElementById("usageModeBtn").classList.remove("active");
+  document.getElementById("liveModeBtn").classList.remove("active");
 });
 
 /* ---------------------------------------------------------
@@ -201,7 +206,7 @@ prechecks.forEach((chk) => {
 });
 
 /* ---------------------------------------------------------
-  角度計算
+  角度計算（3点からの角度）
 --------------------------------------------------------- */
 function angleDeg(ax, ay, bx, by, cx, cy) {
   const v1x = ax - bx;
@@ -218,7 +223,7 @@ function angleDeg(ax, ay, bx, by, cx, cy) {
 }
 
 /* ---------------------------------------------------------
-  撮影補助モード：カメラ起動
+  撮影補助モード：カメラ起動＋録画
 --------------------------------------------------------- */
 document.getElementById("startLiveBtn").addEventListener("click", async () => {
   try {
@@ -248,9 +253,42 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    document.getElementById("liveStatus").textContent = "カメラ起動中…";
+    document.getElementById("liveStatus").textContent = "カメラ起動中（録画中）…";
 
     const drawingUtils = new window.DrawingUtils(ctx);
+
+    // 録画開始
+    if (typeof MediaRecorder === "undefined") {
+      document.getElementById("liveError").textContent =
+        "このブラウザでは録画機能が利用できません。";
+    } else {
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(liveStream, { mimeType: "video/webm" });
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          recordedChunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+        hasRecordedVideo = true;
+        loadedVideoURL = url;
+
+        const analysisVideo = document.getElementById("analysisVideo");
+        analysisVideo.setAttribute("playsinline", "");
+        analysisVideo.setAttribute("webkit-playsinline", "");
+        analysisVideo.muted = true;
+        analysisVideo.src = url;
+
+        document.getElementById("videoStatus").textContent =
+          "撮影した動画が読み込まれました。「動作を解析する」を押してください。";
+      };
+
+      mediaRecorder.start();
+    }
 
     function liveLoop() {
       if (!poseLandmarker) return;
@@ -290,7 +328,7 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
 });
 
 /* ---------------------------------------------------------
-  カメラ停止
+  カメラ停止＋録画停止
 --------------------------------------------------------- */
 document.getElementById("stopLiveBtn").addEventListener("click", () => {
   if (liveAnimationId) {
@@ -301,23 +339,30 @@ document.getElementById("stopLiveBtn").addEventListener("click", () => {
     liveStream.getTracks().forEach((t) => t.stop());
     liveStream = null;
   }
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+  }
   document.getElementById("liveStatus").textContent = "カメラ停止";
 });
 
 /* ---------------------------------------------------------
-  動画読み込み
+  動画読み込み（スマホ内の動画）
 --------------------------------------------------------- */
 document.getElementById("videoFileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
   loadedVideoURL = URL.createObjectURL(file);
+  hasRecordedVideo = false; // 手動選択を優先
 
   const video = document.getElementById("analysisVideo");
   video.setAttribute("playsinline", "");
   video.setAttribute("webkit-playsinline", "");
   video.muted = true;
   video.src = loadedVideoURL;
+
+  document.getElementById("videoStatus").textContent =
+    "選択した動画が読み込まれました。「動作を解析する」を押してください。";
 });
 
 /* ---------------------------------------------------------
@@ -336,28 +381,28 @@ function updateCompareChart() {
       labels: historyLabels,
       datasets: [
         {
-          label: "骨盤傾斜（最大）",
+          label: "骨盤の傾き（最大）",
           data: historyPelvis,
           borderColor: "#ff3b30",
           backgroundColor: "rgba(255,59,48,0.1)",
           tension: 0.3
         },
         {
-          label: "股関節外転（最大）",
+          label: "足が外側に動いた角度（最大）",
           data: historyHipAbd,
           borderColor: "#007aff",
           backgroundColor: "rgba(0,122,255,0.1)",
           tension: 0.3
         },
         {
-          label: "股関節内転（最大）",
+          label: "足が内側に動いた角度（最大）",
           data: historyHipAdd,
           borderColor: "#ffcc00",
           backgroundColor: "rgba(255,204,0,0.1)",
           tension: 0.3
         },
         {
-          label: "歩行速度指標（相対値）",
+          label: "歩く速さ（相対速度％）",
           data: historySpeed,
           borderColor: "#34c759",
           backgroundColor: "rgba(52,199,89,0.1)",
@@ -374,7 +419,7 @@ function updateCompareChart() {
         },
         y1: {
           position: "right",
-          title: { display: true, text: "速度指標（相対値）" },
+          title: { display: true, text: "速度（%）" },
           grid: { drawOnChartArea: false }
         }
       }
@@ -383,24 +428,24 @@ function updateCompareChart() {
 }
 
 /* ---------------------------------------------------------
-  歩行タイプ診断ロジック
+  歩行タイプ診断ロジック（やさしい表現）
 --------------------------------------------------------- */
-function diagnoseGait(pelvis, abd, add, speedIndex, symmetryScore) {
+function diagnoseGait(pelvis, abd, add, speedPercent, symmetryScore) {
   const types = [];
 
   if (pelvis > 10)
-    types.push("骨盤の安定性がやや低い傾向があります。");
+    types.push("骨盤が左右に揺れやすい歩き方です。からだの安定性を高める練習が役立ちます。");
   if (abd < 5)
-    types.push("股関節外転筋（中殿筋）の働きが弱い可能性があります。");
+    types.push("足を横に広げる力が少し弱いかもしれません。おしりの横の筋肉を鍛える運動が効果的です。");
   if (add > 5)
-    types.push("股関節内転が強く，立脚時の安定性が低い可能性があります。");
-  if (speedIndex < 0.005)
-    types.push("歩行速度が低く，推進力が弱い傾向があります。");
+    types.push("足が内側に入りやすい歩き方です。立っているときのバランス練習が役立ちます。");
+  if (speedPercent < 80)
+    types.push("歩く速さが少しゆっくりめです。体力や筋力を少しずつ高めていくと良いでしょう。");
   if (symmetryScore < 95)
-    types.push("左右差がやや大きい歩行パターンです。");
+    types.push("左右のバランスに少し差があります。片脚立ちなどのバランス練習が役立ちます。");
 
   if (types.length === 0)
-    return ["大きな問題は見られません。現在の歩行を維持していきましょう。"];
+    return ["大きな問題は見られません。今の歩き方を続けていきましょう。"];
 
   return types;
 }
@@ -408,13 +453,13 @@ function diagnoseGait(pelvis, abd, add, speedIndex, symmetryScore) {
 /* ---------------------------------------------------------
   歩行タイプ → おすすめエクササイズ選択
 --------------------------------------------------------- */
-function recommendExercises(pelvis, abd, add, speedIndex, symmetryScore) {
+function recommendExercises(pelvis, abd, add, speedPercent, symmetryScore) {
   const ids = [];
 
   if (pelvis > 10) ids.push(7, 8, 12, 14);
   if (abd < 5) ids.push(12, 13, 9);
   if (add > 5) ids.push(4, 14, 15, 13);
-  if (speedIndex < 0.005) ids.push(10, 11, 16, 17);
+  if (speedPercent < 80) ids.push(10, 11, 16, 17);
   if (symmetryScore < 95) ids.push(14, 15);
 
   const unique = [...new Set(ids)];
@@ -427,7 +472,7 @@ function recommendExercises(pelvis, abd, add, speedIndex, symmetryScore) {
 async function analyzeVideo() {
   if (!loadedVideoURL) {
     document.getElementById("videoError").textContent =
-      "動画が選択されていません。";
+      "動画が選択されていません。撮影するか、動画を選択してください。";
     return;
   }
 
@@ -499,18 +544,20 @@ async function analyzeVideo() {
       const rightAnkle = lm[28];
       const leftHip = lm[23];
 
+      // 骨盤中心
       const pelvisCenter = {
         x: (rightHip.x + leftHip.x) / 2,
         y: (rightHip.y + leftHip.y) / 2
       };
 
-      const pelvisTilt = angleDeg(
-        leftHip.x, leftHip.y,
-        pelvisCenter.x, pelvisCenter.y,
-        rightHip.x, rightHip.y
-      );
+      // 骨盤傾斜：左右股関節を結ぶ線と水平線の角度（床面に対して）
+      const dxPelvis = rightHip.x - leftHip.x;
+      const dyPelvis = rightHip.y - leftHip.y;
+      let pelvisTilt = Math.atan2(dyPelvis, dxPelvis) * 180 / Math.PI;
+      pelvisTilt = Math.abs(pelvisTilt); // 傾きの大きさとして扱う
       if (pelvisTilt > maxPelvisTilt) maxPelvisTilt = pelvisTilt;
 
+      // 股関節角度（外側・内側への動き）
       const hipAngle = angleDeg(
         rightKnee.x, rightKnee.y,
         rightHip.x, rightHip.y,
@@ -525,6 +572,7 @@ async function analyzeVideo() {
         if (add > maxHipAdduction) maxHipAdduction = add;
       }
 
+      // 歩行速度指標（相対速度用の元データ）
       const currentTime = video.currentTime;
       const currentFootX = rightAnkle.x;
 
@@ -546,7 +594,7 @@ async function analyzeVideo() {
       videoAnimationId = null;
     }
 
-    let gaitSpeedIndex = 0;
+    let gaitSpeedRaw = 0;
     if (
       firstFrameTime !== null &&
       lastFrameTime !== null &&
@@ -556,11 +604,14 @@ async function analyzeVideo() {
     ) {
       const dx = Math.abs(lastFootX - firstFootX);
       const dt = lastFrameTime - firstFrameTime;
-      gaitSpeedIndex = dx / dt;
+      gaitSpeedRaw = dx / dt; // フレーム上の移動量/秒
     }
 
-    const currentStability = 100 - maxPelvisTilt;
-    const currentSymmetry = 100 - Math.abs(maxPelvisTilt);
+    // 相対速度（%）として扱う（スケーリングは簡易的に100倍）
+    const gaitSpeedPercent = gaitSpeedRaw * 100;
+
+    const currentStability = Math.max(0, 100 - maxPelvisTilt);
+    const currentSymmetry = Math.max(0, 100 - Math.abs(maxPelvisTilt));
 
     const stabilityElem = document.getElementById("stabilityResult");
     const symmetryElem = document.getElementById("symmetryResult");
@@ -568,56 +619,56 @@ async function analyzeVideo() {
 
     if (previousStability === null) {
       stabilityElem.textContent =
-        "歩行の安定性：今回が初回の測定です。前回との比較はありません。";
+        "からだの安定性：今回が初回の測定です。前回との比較はまだありません。";
     } else {
       const diff = currentStability - previousStability;
       if (diff > threshold)
-        stabilityElem.textContent = "歩行の安定性：良くなってきています。";
+        stabilityElem.textContent = "からだの安定性：前回より安定してきています。";
       else if (Math.abs(diff) <= threshold)
-        stabilityElem.textContent = "歩行の安定性：大きな変化はありません。";
+        stabilityElem.textContent = "からだの安定性：大きな変化はありません。";
       else
-        stabilityElem.textContent = "歩行の安定性：やや低下しています。";
+        stabilityElem.textContent = "からだの安定性：少し不安定になっています。";
     }
 
     if (previousSymmetry === null) {
       symmetryElem.textContent =
-        "左右差：今回が初回の測定です。前回との比較はありません。";
+        "左右のバランス：今回が初回の測定です。前回との比較はまだありません。";
     } else {
       const diff = currentSymmetry - previousSymmetry;
       if (diff > threshold)
-        symmetryElem.textContent = "左右差：良くなってきています。";
+        symmetryElem.textContent = "左右のバランス：前回よりそろってきています。";
       else if (Math.abs(diff) <= threshold)
-        symmetryElem.textContent = "左右差：大きな変化はありません。";
+        symmetryElem.textContent = "左右のバランス：大きな変化はありません。";
       else
-        symmetryElem.textContent = "左右差：やや悪化しています。";
+        symmetryElem.textContent = "左右のバランス：少し差が大きくなっています。";
     }
 
     previousStability = currentStability;
     previousSymmetry = currentSymmetry;
 
     document.getElementById("pelvisResult").textContent =
-      `骨盤傾斜（最大）：${maxPelvisTilt.toFixed(1)}°`;
+      `骨盤の傾き（最大）：${maxPelvisTilt.toFixed(1)}°`;
     document.getElementById("hipAbductionResult").textContent =
-      `股関節外転角度（最大）：${maxHipAbduction.toFixed(1)}°（推定）`;
+      `足が外側に動いた角度（最大）：${maxHipAbduction.toFixed(1)}°（推定）`;
     document.getElementById("hipAdductionResult").textContent =
-      `股関節内転角度（最大）：${maxHipAdduction.toFixed(1)}°（推定）`;
+      `足が内側に動いた角度（最大）：${maxHipAdduction.toFixed(1)}°（推定）`;
     document.getElementById("speedResult").textContent =
-      `歩行速度指標（相対値）：${gaitSpeedIndex.toFixed(3)}`;
+      `歩く速さ（相対速度）：${gaitSpeedPercent.toFixed(1)} %`;
 
     document.getElementById("resultBox").style.display = "block";
-    document.getElementById("videoStatus").textContent = "解析完了";
+    document.getElementById("videoStatus").textContent = "解析が完了しました。";
 
     const tbody = document.querySelector("#resultTable tbody");
     const row = document.createElement("tr");
     const conditionLabel =
-      document.getElementById("surgeryDiffText").textContent || "未設定";
+      document.getElementById("surgeryDiffText").textContent || "条件未設定";
 
     row.innerHTML = `
       <td>${conditionLabel}</td>
       <td>${maxPelvisTilt.toFixed(1)}</td>
       <td>${maxHipAbduction.toFixed(1)}</td>
       <td>${maxHipAdduction.toFixed(1)}</td>
-      <td>${gaitSpeedIndex.toFixed(3)}</td>
+      <td>${gaitSpeedPercent.toFixed(1)}</td>
     `;
     tbody.appendChild(row);
 
@@ -625,13 +676,13 @@ async function analyzeVideo() {
     historyPelvis.push(Number(maxPelvisTilt.toFixed(1)));
     historyHipAbd.push(Number(maxHipAbduction.toFixed(1)));
     historyHipAdd.push(Number(maxHipAdduction.toFixed(1)));
-    historySpeed.push(Number(gaitSpeedIndex.toFixed(3)));
+    historySpeed.push(Number(gaitSpeedPercent.toFixed(1)));
 
     updateCompareChart();
     saveHistory();
 
     /* ---------------------------------------------------------
-      ② 歩行タイプ診断
+      ② 歩き方の特徴（やさしい診断）
     --------------------------------------------------------- */
     const typeBox = document.getElementById("typeBox");
     const typeContent = document.getElementById("typeContent");
@@ -641,7 +692,7 @@ async function analyzeVideo() {
       maxPelvisTilt,
       maxHipAbduction,
       maxHipAdduction,
-      gaitSpeedIndex,
+      gaitSpeedPercent,
       symmetryScore
     );
 
@@ -660,13 +711,13 @@ async function analyzeVideo() {
       maxPelvisTilt,
       maxHipAbduction,
       maxHipAdduction,
-      gaitSpeedIndex,
+      gaitSpeedPercent,
       symmetryScore
     );
 
     if (recs.length === 0) {
       exerciseContent.innerHTML =
-        "<p>特に大きな問題は見られませんでした。今の歩行を維持していきましょう。</p>";
+        "<p>大きな問題は見られませんでした。今の歩き方を続けていきましょう。</p>";
     } else {
       exerciseContent.innerHTML = recs
         .map(
