@@ -9,7 +9,9 @@
   <link rel="manifest" href="manifest.json" />
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js");
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js");
+      });
     }
   </script>
 
@@ -46,33 +48,28 @@
       background: #f2f2f7;
       color: #1c1c1e;
     }
-
     header {
       text-align: center;
       padding: 20px 10px;
       background: white;
       border-bottom: 1px solid #e5e5ea;
     }
-
     .title {
       font-size: 22px;
       font-weight: 700;
       color: #111;
     }
-
     .subtitle {
       font-size: 14px;
       margin-top: 4px;
       color: #666;
     }
-
     .container {
       width: 100%;
       max-width: 480px;
       margin: auto;
       padding: 14px;
     }
-
     .card {
       background: white;
       padding: 16px;
@@ -80,13 +77,11 @@
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
       margin-bottom: 16px;
     }
-
     .mode-switch {
       display: flex;
       gap: 8px;
       margin-bottom: 16px;
     }
-
     .mode-button {
       flex: 1;
       padding: 12px;
@@ -97,20 +92,16 @@
       color: #333;
       font-weight: 600;
     }
-
     .mode-button.active {
       background: #007aff;
       color: white;
     }
-
     .section {
       display: none;
     }
-
     .section.active {
       display: block;
     }
-
     .checklist {
       background: white;
       padding: 14px;
@@ -119,20 +110,18 @@
       margin-bottom: 16px;
       font-size: 15px;
     }
-
     .checklist label {
       display: block;
       margin-bottom: 8px;
     }
-
     video,
     canvas {
       width: 100%;
       max-width: 100%;
       border-radius: 12px;
       margin-top: 12px;
+      object-fit: contain;
     }
-
     button {
       padding: 14px;
       font-size: 16px;
@@ -146,16 +135,13 @@
       box-shadow: 0 3px 6px rgba(0, 122, 255, 0.3);
       transition: 0.15s;
     }
-
     button:active {
       transform: scale(0.97);
     }
-
     button:disabled {
       background: #c7c7cc;
       box-shadow: none;
     }
-
     .result-box {
       background: white;
       padding: 16px;
@@ -164,121 +150,130 @@
       margin-top: 20px;
       font-size: 15px;
     }
-
     table {
       width: 100%;
       font-size: 14px;
       background: white;
       border-radius: 12px;
-      padding: 10px;
+      border-collapse: collapse;
     }
-
     th,
     td {
       padding: 8px;
       text-align: center;
+      border-bottom: 1px solid #eee;
     }
-
-    .gait-status-badge {
-      display: inline-block;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 10px;
+    a.exercise-link {
+      color: #007aff;
+      text-decoration: none;
+    }
+    a.exercise-link:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 
 <body>
-  <header>
-    <div class="title">歩行解析アプリ</div>
-    <div class="subtitle">今日の歩き方をチェックしてみましょう</div>
-  </header>
+<header>
+  <div class="title">歩行解析アプリ</div>
+  <div class="subtitle">今日の歩き方をチェックしてみましょう</div>
+</header>
 
-  <div class="container">
-    <!-- モード切替 -->
-    <div class="mode-switch">
-      <button id="liveModeBtn" class="mode-button active">📸 撮影補助</button>
-      <button id="videoModeBtn" class="mode-button">🎥 動作解析</button>
-    </div>
-
-    <!-- 撮影補助モード -->
-    <section id="liveSection" class="section active">
-      <div class="card">
-        <h2 style="margin-top: 0">📸 撮影補助モード</h2>
-
-        <div class="checklist">
-          <div style="margin-bottom: 8px; font-size: 14px; color: #555;">
-            撮影するポイントです。全てにチェックをいれると，撮影が開始できます。
-          </div>
-          <label><input type="checkbox" class="precheck" /> 後ろから撮影している</label>
-          <label><input type="checkbox" class="precheck" /> 全身が映っている</label>
-          <label><input type="checkbox" class="precheck" /> 普段どおりの速度で歩いている</label>
-        </div>
-
-        <video id="liveVideo" playsinline muted></video>
-        <canvas id="liveCanvas"></canvas>
-
-        <button id="startLiveBtn" disabled>撮影開始</button>
-        <button id="stopLiveBtn">カメラ停止</button>
-
-        <div id="liveStatus"></div>
-        <div id="liveError" style="color: red"></div>
-      </div>
-    </section>
-
-    <!-- 動作解析モード -->
-    <section id="videoSection" class="section">
-      <div class="card">
-        <h2 style="margin-top: 0">🎥 動作解析モード</h2>
-
-        <label>手術日：</label>
-        <input type="date" id="surgeryDate" style="width: 100%; margin-top: 6px" />
-        <div id="surgeryDiffText" style="margin-top: 6px; font-size: 14px; color: #555"></div>
-
-        <input type="file" id="videoFileInput" accept="video/*" style="margin-top: 12px" />
-        <button id="analyzeVideoBtn">動作を解析</button>
-
-        <video id="analysisVideo" controls></video>
-        <canvas id="analysisCanvas"></canvas>
-
-        <div id="videoStatus"></div>
-        <div id="videoError" style="color: red"></div>
-
-        <div id="resultBox" class="result-box" style="display: none">
-          <div id="pelvisResult"></div>
-          <div id="hipAbductionResult"></div>
-          <div id="hipAdductionResult"></div>
-          <div id="speedResult"></div>
-          <div id="stabilityResult" style="margin-top: 8px;"></div>
-          <div id="symmetryResult" style="margin-top: 4px;"></div>
-
-          <div style="font-size: 12px; color: #666; margin-top: 10px">
-            ※この結果は診断ではありません。気になる場合は医療スタッフにご相談ください。
-          </div>
-        </div>
-
-        <h3 style="margin-top: 20px">回復過程の比較</h3>
-        <table id="resultTable">
-          <thead>
-            <tr>
-              <th>条件</th>
-              <th>骨盤傾斜</th>
-              <th>股関節外転</th>
-              <th>股関節内転</th>
-              <th>歩行速度</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-
-        <canvas id="compareChart" style="margin-top: 16px"></canvas>
-      </div>
-    </section>
+<div class="container">
+  <!-- モード切替 -->
+  <div class="mode-switch">
+    <button id="liveModeBtn" class="mode-button active">📸 撮影補助</button>
+    <button id="videoModeBtn" class="mode-button">🎥 動作解析</button>
   </div>
 
-  <!-- script.js 読み込み（通常スクリプト） -->
-  <script src="script.js"></script>
+  <!-- 撮影補助モード -->
+  <section id="liveSection" class="section active">
+    <div class="card">
+      <h2 style="margin-top: 0">📸 撮影補助モード</h2>
+      <div class="checklist">
+        <div style="margin-bottom: 8px; font-size: 14px; color: #555;">
+          撮影するポイントです。全てにチェックをいれると，撮影が開始できます。
+        </div>
+        <label><input type="checkbox" class="precheck" /> 後ろから撮影している</label>
+        <label><input type="checkbox" class="precheck" /> 全身が映っている</label>
+        <label><input type="checkbox" class="precheck" /> 普段どおりの速度で歩いている</label>
+      </div>
+
+      <video id="liveVideo" playsinline webkit-playsinline muted></video>
+      <canvas id="liveCanvas"></canvas>
+
+      <button id="startLiveBtn" disabled>撮影開始</button>
+      <button id="stopLiveBtn">カメラ停止</button>
+
+      <div id="liveStatus"></div>
+      <div id="liveError" style="color: red"></div>
+    </div>
+  </section>
+
+  <!-- 動作解析モード -->
+  <section id="videoSection" class="section">
+    <div class="card">
+      <h2 style="margin-top: 0">🎥 動作解析モード</h2>
+
+      <label>手術日：</label>
+      <input type="date" id="surgeryDate" style="width: 100%; margin-top: 6px" />
+      <div id="surgeryDiffText" style="margin-top: 6px; font-size: 14px; color: #555"></div>
+
+      <input type="file" id="videoFileInput" accept="video/*" style="margin-top: 12px" />
+      <button id="analyzeVideoBtn">動作を解析</button>
+
+      <video id="analysisVideo" controls playsinline webkit-playsinline muted></video>
+      <canvas id="analysisCanvas"></canvas>
+
+      <div id="videoStatus"></div>
+      <div id="videoError" style="color: red"></div>
+
+      <!-- ① 歩行解析結果 -->
+      <div id="resultBox" class="result-box" style="display: none">
+        <h3>① 歩行解析結果</h3>
+        <div id="pelvisResult"></div>
+        <div id="hipAbductionResult"></div>
+        <div id="hipAdductionResult"></div>
+        <div id="speedResult"></div>
+        <div id="stabilityResult" style="margin-top: 8px;"></div>
+        <div id="symmetryResult" style="margin-top: 4px;"></div>
+        <div style="font-size: 12px; color: #666; margin-top: 10px">
+          ※この結果は診断ではありません。動画から推定した相対的な指標であり，参考情報としてご利用ください。
+        </div>
+      </div>
+
+      <!-- ② あなたの歩行タイプ診断 -->
+      <div id="typeBox" class="result-box" style="display: none">
+        <h3>② あなたの歩行タイプ診断</h3>
+        <div id="typeContent"></div>
+      </div>
+
+      <!-- ③ あなたにおすすめのセルフエクササイズ -->
+      <div id="exerciseBox" class="result-box" style="display: none">
+        <h3>③ あなたにおすすめのセルフエクササイズ</h3>
+        <div id="exerciseContent"></div>
+      </div>
+
+      <h3 style="margin-top: 20px">回復過程の比較</h3>
+      <table id="resultTable">
+        <thead>
+          <tr>
+            <th>条件</th>
+            <th>骨盤傾斜</th>
+            <th>股関節外転</th>
+            <th>股関節内転</th>
+            <th>歩行速度指標</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <canvas id="compareChart" style="margin-top: 16px"></canvas>
+    </div>
+  </section>
+</div>
+
+<!-- script.js 読み込み -->
+<script src="script.js"></script>
 </body>
 </html>
