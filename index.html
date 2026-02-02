@@ -39,7 +39,7 @@
     window.DrawingUtils = DrawingUtils;
   </script>
 
-  <!-- iPhoneヘルスケア風デザイン -->
+  <!-- iOS風デザイン -->
   <style>
     body {
       margin: 0;
@@ -70,19 +70,14 @@
       margin: auto;
       padding: 14px;
     }
-    .card {
-      background: white;
-      padding: 16px;
-      border-radius: 14px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-      margin-bottom: 16px;
+
+    /* 2段UI */
+    .mode-switch-top {
+      margin-bottom: 8px;
     }
     .mode-switch {
       display: flex;
       gap: 8px;
-      margin-bottom: 8px;
-    }
-    .mode-switch-top {
       margin-bottom: 8px;
     }
     .mode-button {
@@ -99,33 +94,79 @@
       background: #007aff;
       color: white;
     }
-    .section {
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .card {
+      background: white;
+      padding: 16px;
+      border-radius: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    /* REC表示 */
+    #recIndicator {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
       display: none;
     }
-    .section.active {
-      display: block;
+
+    /* 大きなボタン */
+    .big-button {
+      width: 100%;
+      padding: 16px;
+      margin-top: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      border-radius: 12px;
+      border: none;
+      background: #007aff;
+      color: white;
+      box-shadow: 0 4px 10px rgba(0,122,255,0.4);
     }
+    .big-button:disabled {
+      background: #b0c9ff;
+      box-shadow: none;
+    }
+    .stop-button {
+      width: 100%;
+      padding: 16px;
+      margin-top: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      border-radius: 12px;
+      border: none;
+      background: #ff3b30;
+      color: white;
+      box-shadow: 0 4px 10px rgba(255,59,48,0.4);
+    }
+
+    /* iOSカード */
     .result-box {
       background: white;
       padding: 16px;
       border-radius: 14px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
       margin-top: 20px;
       font-size: 15px;
     }
-    video,
-    canvas {
+
+    video, canvas {
       width: 100%;
       border-radius: 12px;
       margin-top: 12px;
     }
-    a.exercise-link {
-      color: #007aff;
-      text-decoration: none;
-    }
-    a.exercise-link:hover {
-      text-decoration: underline;
-    }
+
     .primary-button {
       width: 100%;
       padding: 14px;
@@ -136,14 +177,22 @@
       color: #fff;
       font-size: 16px;
       font-weight: 700;
-      box-shadow: 0 4px 10px rgba(0, 122, 255, 0.4);
+      box-shadow: 0 4px 10px rgba(0,122,255,0.4);
     }
-    .primary-button:disabled {
-      background: #b0c9ff;
-      box-shadow: none;
+
+    .ios-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
     }
-    button {
-      cursor: pointer;
+    .ios-table th, .ios-table td {
+      padding: 10px;
+      border-bottom: 1px solid #e5e5ea;
+      text-align: left;
+    }
+    .ios-table th {
+      background: #f9f9fb;
+      font-weight: 600;
     }
   </style>
 </head>
@@ -156,25 +205,25 @@
 
 <div class="container">
 
-  <!-- 上段：アプリの使用方法 -->
-  <div class="mode-switch mode-switch-top">
+  <!-- 上段：使用方法 -->
+  <div class="mode-switch-top">
     <button id="usageModeBtn" class="mode-button active">📘 アプリの使用方法</button>
   </div>
 
-  <!-- 下段：撮影補助 ＋ 動作解析 -->
+  <!-- 下段：撮影補助＋動作解析 -->
   <div class="mode-switch">
     <button id="liveModeBtn" class="mode-button">📸 撮影補助</button>
     <button id="videoModeBtn" class="mode-button">🎥 動作解析</button>
   </div>
 
-  <!-- 使用方法モード -->
+  <!-- 使用方法 -->
   <section id="usageSection" class="section active">
     <div class="card">
       <h2>📘 アプリの使用方法</h2>
 
       <div class="result-box">
         <h3>アプリの目的</h3>
-        <p>後方から撮影した歩行動画をもとに、骨盤の傾き・足の動き・左右のバランス・歩く速さなどを推定し、歩き方の特徴をわかりやすく見えるようにします。</p>
+        <p>後ろから撮影した歩行動画をもとに、骨盤の傾き・足の動き・左右のバランス・歩く速さなどを推定し、歩き方の特徴をわかりやすく見えるようにします。</p>
       </div>
 
       <div class="result-box">
@@ -226,14 +275,15 @@
         <h3>注意点</h3>
         <p>このアプリは診断を行うものではありません。歩き方の変化を確認するための参考情報としてご利用ください。</p>
       </div>
-
     </div>
   </section>
 
-  <!-- 撮影補助モード -->
+  <!-- 撮影補助 -->
   <section id="liveSection" class="section">
     <div class="card">
       <h2>📸 撮影補助モード</h2>
+
+      <div id="recIndicator">● REC</div>
 
       <div class="result-box">
         <p>撮影前に以下を確認してください。</p>
@@ -247,15 +297,15 @@
       <video id="liveVideo" playsinline muted></video>
       <canvas id="liveCanvas"></canvas>
 
-      <button id="startLiveBtn" disabled>撮影開始</button>
-      <button id="stopLiveBtn">カメラ停止</button>
+      <button id="startLiveBtn" class="big-button" disabled>撮影開始</button>
+      <button id="stopLiveBtn" class="stop-button">カメラ停止</button>
 
       <div id="liveStatus"></div>
       <div id="liveError" style="color:red;"></div>
     </div>
   </section>
 
-  <!-- 動作解析モード -->
+  <!-- 動作解析 -->
   <section id="videoSection" class="section">
     <div class="card">
       <h2>🎥 動作解析モード</h2>
@@ -276,7 +326,7 @@
 
       <!-- 解析結果 -->
       <div id="resultBox" class="result-box" style="display:none;">
-        <h3>① 歩き方の結果</h3>
+        <h3>① 歩き方の結果（左右別）</h3>
         <div id="pelvisResult"></div>
         <div id="hipAbductionResult"></div>
         <div id="hipAdductionResult"></div>
@@ -298,13 +348,13 @@
       </div>
 
       <h3 style="margin-top:20px;">回復の変化を比べる</h3>
-      <table id="resultTable">
+      <table id="resultTable" class="ios-table">
         <thead>
           <tr>
             <th>条件</th>
             <th>骨盤傾き</th>
-            <th>外側への動き</th>
-            <th>内側への動き</th>
+            <th>外転</th>
+            <th>内転</th>
             <th>速度（%）</th>
           </tr>
         </thead>

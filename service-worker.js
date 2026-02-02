@@ -1,9 +1,11 @@
-const CACHE_NAME = "gait-app-cache-v3";  // ★バージョンを上げる
+const CACHE_NAME = "gait-app-cache-v3";  // ← 必ずバージョンを上げる
 const URLS_TO_CACHE = [
   "./",
   "./index.html",
   "./script.js",
-  "./manifest.json"
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
