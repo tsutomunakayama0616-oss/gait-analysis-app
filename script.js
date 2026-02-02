@@ -242,7 +242,6 @@ function angleDeg(ax, ay, bx, by, cx, cy) {
 --------------------------------------------------------- */
 document.getElementById("startLiveBtn").addEventListener("click", async () => {
 
-  // 前回のエラーを消す
   document.getElementById("liveError").textContent = "";
 
   try {
@@ -355,9 +354,7 @@ document.getElementById("stopLiveBtn").addEventListener("click", () => {
     mediaRecorder.stop();
   }
 
-  // REC非表示
   document.getElementById("recIndicator").style.display = "none";
-
   document.getElementById("liveStatus").textContent = "カメラ停止";
 });
 
@@ -859,4 +856,35 @@ async function generatePdfReport() {
     doc.text("解析に使用した歩行画像", marginLeft, cursorY);
     cursorY += 6;
 
-    doc.addImage(imgData, "PNG", marginLeft, cursor
+    doc.addImage(imgData, "PNG", marginLeft, cursorY, imgWidth, imgHeight);
+    cursorY += imgHeight + 4;
+  }
+
+  // 保存
+  doc.save("gait-report.pdf");
+}
+
+/* ---------------------------------------------------------
+  PDFレポートボタン
+--------------------------------------------------------- */
+document.getElementById("pdfReportBtn").addEventListener("click", () => {
+  if (!lastAnalysisResult || !lastAnalysisResult.speedPercent) {
+    alert("先に動画を解析してください。");
+    return;
+  }
+  generatePdfReport();
+});
+
+/* ---------------------------------------------------------
+  「動作を解析する」ボタン
+--------------------------------------------------------- */
+document.getElementById("analyzeVideoBtn").addEventListener("click", () => {
+  analyzeVideo();
+});
+
+/* ---------------------------------------------------------
+  ページ読み込み時：履歴を復元
+--------------------------------------------------------- */
+window.addEventListener("load", () => {
+  loadHistory();
+});
