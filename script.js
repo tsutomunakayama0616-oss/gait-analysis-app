@@ -43,6 +43,14 @@ const exerciseList = [
 ];
 
 /* ---------------------------------------------------------
+  YouTube サムネイル生成
+--------------------------------------------------------- */
+function getThumbnail(url) {
+  const id = url.split("youtu.be/")[1];
+  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+}
+
+/* ---------------------------------------------------------
   履歴の保存・読み込み
 --------------------------------------------------------- */
 function saveHistory() {
@@ -194,45 +202,59 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
         "骨格モデルの読み込みに失敗しました。";
       return;
     }
+
     liveStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
       audio: false
     });
+
     const video = document.getElementById("liveVideo");
     const canvas = document.getElementById("liveCanvas");
     const ctx = canvas.getContext("2d");
+
     video.srcObject = liveStream;
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
     video.muted = true;
+
     await video.play();
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+
     document.getElementById("liveStatus").textContent = "カメラ起動中…";
+
     const drawingUtils = new window.DrawingUtils(ctx);
 
     function liveLoop() {
       if (!poseLandmarker) return;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
       const nowInMs = performance.now();
       const result = poseLandmarker.detectForVideo(video, nowInMs);
+
       if (result && result.landmarks && result.landmarks.length > 0) {
         const landmarks = result.landmarks[0];
+
         drawingUtils.drawLandmarks(landmarks, {
           radius: 3,
           color: "#ff3b30"
         });
+
         drawingUtils.drawConnectors(
           landmarks,
           window.PoseLandmarker.POSE_CONNECTIONS,
           { color: "#007aff", lineWidth: 2 }
         );
       }
+
       ctx.restore();
       liveAnimationId = requestAnimationFrame(liveLoop);
     }
+
     liveLoop();
   } catch (err) {
     console.error(err);
@@ -262,7 +284,9 @@ document.getElementById("stopLiveBtn").addEventListener("click", () => {
 document.getElementById("videoFileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
+
   loadedVideoURL = URL.createObjectURL(file);
+
   const video = document.getElementById("analysisVideo");
   video.setAttribute("playsinline", "");
   video.setAttribute("webkit-playsinline", "");
@@ -275,7 +299,11 @@ document.getElementById("videoFileInput").addEventListener("change", (e) => {
 --------------------------------------------------------- */
 function updateCompareChart() {
   const ctx = document.getElementById("compareChart").getContext("2d");
-  if (compareChart) compareChart.destroy();
+
+  if (compareChart) {
+    compareChart.destroy();
+  }
+
   compareChart = new Chart(ctx, {
     type: "line",
     data: {
@@ -315,7 +343,9 @@ function updateCompareChart() {
     options: {
       responsive: true,
       scales: {
-        y: { title: { display: true, text: "角度（度）" } },
+        y: {
+          title: { display: true, text: "角度（度）" }
+        },
         y1: {
           position: "right",
           title: { display: true, text: "速度指標（相対値）" },
@@ -331,12 +361,21 @@ function updateCompareChart() {
 --------------------------------------------------------- */
 function diagnoseGait(pelvis, abd, add, speedIndex, symmetryScore) {
   const types = [];
-  if (pelvis > 10) types.push("骨盤の安定性がやや低い傾向があります。");
-  if (abd < 5) types.push("股関節外転筋（中殿筋）の働きが弱い可能性があります。");
-  if (add > 5) types.push("股関節内転が強く，立脚時の安定性が低い可能性があります。");
-  if (speedIndex < 0.005) types.push("歩行速度が低く，推進力が弱い傾向があります。");
-  if (symmetryScore < 95) types.push("左右差がやや大きい歩行パターンです。");
-  if (types.length === 0) return ["大きな問題は見られません。現在の歩行を維持していきましょう。"];
+
+  if (pelvis > 10)
+    types.push("骨盤の安定性がやや低い傾向があります。");
+  if (abd < 5)
+    types.push("股関節外転筋（中殿筋）の働きが弱い可能性があります。");
+  if (add > 5)
+    types.push("股関節内転が強く，立脚時の安定性が低い可能性があります。");
+  if (speedIndex < 0.005)
+    types.push("歩行速度が低く，推進力が弱い傾向があります。");
+  if (symmetryScore < 95)
+    types.push("左右差がやや大きい歩行パターンです。");
+
+  if (types.length === 0)
+    return ["大きな問題は見られません。現在の歩行を維持していきましょう。"];
+
   return types;
 }
 
@@ -346,26 +385,11 @@ function diagnoseGait(pelvis, abd, add, speedIndex, symmetryScore) {
 function recommendExercises(pelvis, abd, add, speedIndex, symmetryScore) {
   const ids = [];
 
-  // 骨盤安定性
-  if (pelvis > 10) {
-    ids.push(7, 8, 12, 14);
-  }
-  // 中殿筋弱さ
-  if (abd < 5) {
-    ids.push(12, 13, 9);
-  }
-  // 内転過多・バランス
-  if (add > 5) {
-    ids.push(4, 14, 15, 13);
-  }
-  // 速度低下
-  if (speedIndex < 0.005) {
-    ids.push(10, 11, 16, 17);
-  }
-  // 左右差
-  if (symmetryScore < 95) {
-    ids.push(14, 15);
-  }
+  if (pelvis > 10) ids.push(7, 8, 12, 14);
+  if (abd < 5) ids.push(12, 13, 9);
+  if (add > 5) ids.push(4, 14, 15, 13);
+  if (speedIndex < 0.005) ids.push(10, 11, 16, 17);
+  if (symmetryScore < 95) ids.push(14, 15);
 
   const unique = [...new Set(ids)];
   return unique.map(id => exerciseList.find(e => e.id === id)).filter(Boolean);
@@ -419,7 +443,7 @@ async function analyzeVideo() {
   let firstFootX = null;
   let lastFootX = null;
 
-  const neutralHipAngle = 90; // 仮の中間角度
+  const neutralHipAngle = 90;
 
   function processFrame() {
     if (video.paused || video.ended || video.currentTime >= video.duration) {
@@ -455,22 +479,16 @@ async function analyzeVideo() {
       };
 
       const pelvisTilt = angleDeg(
-        leftHip.x,
-        leftHip.y,
-        pelvisCenter.x,
-        pelvisCenter.y,
-        rightHip.x,
-        rightHip.y
+        leftHip.x, leftHip.y,
+        pelvisCenter.x, pelvisCenter.y,
+        rightHip.x, rightHip.y
       );
       if (pelvisTilt > maxPelvisTilt) maxPelvisTilt = pelvisTilt;
 
       const hipAngle = angleDeg(
-        rightKnee.x,
-        rightKnee.y,
-        rightHip.x,
-        rightHip.y,
-        pelvisCenter.x,
-        pelvisCenter.y
+        rightKnee.x, rightKnee.y,
+        rightHip.x, rightHip.y,
+        pelvisCenter.x, pelvisCenter.y
       );
 
       if (hipAngle >= neutralHipAngle) {
@@ -510,9 +528,9 @@ async function analyzeVideo() {
       firstFootX !== null &&
       lastFootX !== null
     ) {
-      const dx = Math.abs(lastFootX - firstFootX); // 正規化座標の変化量
+      const dx = Math.abs(lastFootX - firstFootX);
       const dt = lastFrameTime - firstFrameTime;
-      gaitSpeedIndex = dx / dt; // 単位のない相対指標
+      gaitSpeedIndex = dx / dt;
     }
 
     const currentStability = 100 - maxPelvisTilt;
@@ -527,13 +545,12 @@ async function analyzeVideo() {
         "歩行の安定性：今回が初回の測定です。前回との比較はありません。";
     } else {
       const diff = currentStability - previousStability;
-      if (diff > threshold) {
+      if (diff > threshold)
         stabilityElem.textContent = "歩行の安定性：良くなってきています。";
-      } else if (Math.abs(diff) <= threshold) {
+      else if (Math.abs(diff) <= threshold)
         stabilityElem.textContent = "歩行の安定性：大きな変化はありません。";
-      } else {
+      else
         stabilityElem.textContent = "歩行の安定性：やや低下しています。";
-      }
     }
 
     if (previousSymmetry === null) {
@@ -541,19 +558,17 @@ async function analyzeVideo() {
         "左右差：今回が初回の測定です。前回との比較はありません。";
     } else {
       const diff = currentSymmetry - previousSymmetry;
-      if (diff > threshold) {
+      if (diff > threshold)
         symmetryElem.textContent = "左右差：良くなってきています。";
-      } else if (Math.abs(diff) <= threshold) {
+      else if (Math.abs(diff) <= threshold)
         symmetryElem.textContent = "左右差：大きな変化はありません。";
-      } else {
+      else
         symmetryElem.textContent = "左右差：やや悪化しています。";
-      }
     }
 
     previousStability = currentStability;
     previousSymmetry = currentSymmetry;
 
-    // ① 歩行解析結果表示
     document.getElementById("pelvisResult").textContent =
       `骨盤傾斜（最大）：${maxPelvisTilt.toFixed(1)}°`;
     document.getElementById("hipAbductionResult").textContent =
@@ -566,11 +581,11 @@ async function analyzeVideo() {
     document.getElementById("resultBox").style.display = "block";
     document.getElementById("videoStatus").textContent = "解析完了";
 
-    // 履歴テーブル更新
     const tbody = document.querySelector("#resultTable tbody");
     const row = document.createElement("tr");
     const conditionLabel =
       document.getElementById("surgeryDiffText").textContent || "未設定";
+
     row.innerHTML = `
       <td>${conditionLabel}</td>
       <td>${maxPelvisTilt.toFixed(1)}</td>
@@ -589,10 +604,13 @@ async function analyzeVideo() {
     updateCompareChart();
     saveHistory();
 
-    // ② 歩行タイプ診断
+    /* ---------------------------------------------------------
+      ② 歩行タイプ診断
+    --------------------------------------------------------- */
     const typeBox = document.getElementById("typeBox");
     const typeContent = document.getElementById("typeContent");
-    const symmetryScore = currentSymmetry; // ここでは簡易的に利用
+    const symmetryScore = currentSymmetry;
+
     const types = diagnoseGait(
       maxPelvisTilt,
       maxHipAbduction,
@@ -600,14 +618,18 @@ async function analyzeVideo() {
       gaitSpeedIndex,
       symmetryScore
     );
+
     typeContent.innerHTML = `<ul>${types
       .map(t => `<li>${t}</li>`)
       .join("")}</ul>`;
     typeBox.style.display = "block";
 
-    // ③ おすすめセルフエクササイズ
+    /* ---------------------------------------------------------
+      ③ おすすめセルフエクササイズ（サムネイル付き）
+    --------------------------------------------------------- */
     const exerciseBox = document.getElementById("exerciseBox");
     const exerciseContent = document.getElementById("exerciseContent");
+
     const recs = recommendExercises(
       maxPelvisTilt,
       maxHipAbduction,
@@ -623,16 +645,21 @@ async function analyzeVideo() {
       exerciseContent.innerHTML = recs
         .map(
           r => `
-          <div style="margin-bottom:12px;">
-            <div>${r.name}</div>
-            <a class="exercise-link" href="${r.url}" target="_blank" rel="noopener noreferrer">
-              動画を見る（YouTube）
-            </a>
+          <div style="margin-bottom:16px; display:flex; gap:12px; align-items:center;">
+            <img src="${getThumbnail(r.url)}"
+                 style="width:120px; height:90px; border-radius:8px; object-fit:cover;">
+            <div>
+              <div>${r.name}</div>
+              <a class="exercise-link" href="${r.url}" target="_blank" rel="noopener noreferrer">
+                動画を見る（YouTube）
+              </a>
+            </div>
           </div>
         `
         )
         .join("");
     }
+
     exerciseBox.style.display = "block";
 
     video.controls = true;
