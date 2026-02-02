@@ -98,6 +98,7 @@ function loadHistory() {
       `;
       tbody.appendChild(row);
     }
+
     if (historyLabels.length > 0) {
       updateCompareChart();
       document.getElementById("resultBox").style.display = "block";
@@ -112,13 +113,16 @@ function loadHistory() {
 --------------------------------------------------------- */
 async function initPoseLandmarker() {
   if (poseLandmarker) return;
+
   if (!window.FilesetResolver || !window.PoseLandmarker || !window.DrawingUtils) {
     console.error("MediaPipe がまだ読み込まれていません。");
     return;
   }
+
   const vision = await window.FilesetResolver.forVisionTasks(
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
   );
+
   poseLandmarker = await window.PoseLandmarker.createFromOptions(vision, {
     baseOptions: {
       modelAssetPath:
@@ -127,6 +131,7 @@ async function initPoseLandmarker() {
     runningMode: "VIDEO",
     numPoses: 1
   });
+
   runningMode = "VIDEO";
 }
 
@@ -136,31 +141,52 @@ async function initPoseLandmarker() {
 document.getElementById("surgeryDate").addEventListener("change", () => {
   const inputDate = new Date(document.getElementById("surgeryDate").value);
   const today = new Date();
+
   if (isNaN(inputDate.getTime())) {
     document.getElementById("surgeryDiffText").textContent = "";
     return;
   }
+
   const diffDays = Math.floor((today - inputDate) / (1000 * 60 * 60 * 24));
   const text =
-    diffDays >= 0 ? `手術後 ${diffDays}日` : `手術前 ${Math.abs(diffDays)}日`;
+    diffDays >= 0
+      ? `手術後 ${diffDays}日`
+      : `手術前 ${Math.abs(diffDays)}日`;
+
   document.getElementById("surgeryDiffText").textContent = text;
 });
 
 /* ---------------------------------------------------------
-  モード切替
+  モード切替（撮影補助・動作解析・使用方法）
 --------------------------------------------------------- */
 document.getElementById("liveModeBtn").addEventListener("click", () => {
   document.getElementById("liveSection").classList.add("active");
   document.getElementById("videoSection").classList.remove("active");
+  document.getElementById("usageSection").classList.remove("active");
+
   document.getElementById("liveModeBtn").classList.add("active");
   document.getElementById("videoModeBtn").classList.remove("active");
+  document.getElementById("usageModeBtn").classList.remove("active");
 });
 
 document.getElementById("videoModeBtn").addEventListener("click", () => {
   document.getElementById("videoSection").classList.add("active");
   document.getElementById("liveSection").classList.remove("active");
+  document.getElementById("usageSection").classList.remove("active");
+
   document.getElementById("videoModeBtn").classList.add("active");
   document.getElementById("liveModeBtn").classList.remove("active");
+  document.getElementById("usageModeBtn").classList.remove("active");
+});
+
+document.getElementById("usageModeBtn").addEventListener("click", () => {
+  document.getElementById("usageSection").classList.add("active");
+  document.getElementById("liveSection").classList.remove("active");
+  document.getElementById("videoSection").classList.remove("active");
+
+  document.getElementById("usageModeBtn").classList.add("active");
+  document.getElementById("liveModeBtn").classList.remove("active");
+  document.getElementById("videoModeBtn").classList.remove("active");
 });
 
 /* ---------------------------------------------------------
@@ -295,7 +321,7 @@ document.getElementById("videoFileInput").addEventListener("change", (e) => {
 });
 
 /* ---------------------------------------------------------
-  グラフ更新
+  グラフ更新（Chart.js）
 --------------------------------------------------------- */
 function updateCompareChart() {
   const ctx = document.getElementById("compareChart").getContext("2d");
