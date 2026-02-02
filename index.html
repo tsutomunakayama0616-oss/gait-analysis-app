@@ -26,6 +26,9 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- jsPDF（PDF生成） -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
   <!-- MediaPipe PoseLandmarker -->
   <script type="module">
     import {
@@ -331,7 +334,6 @@
         <div id="hipAbductionResult"></div>
         <div id="hipAdductionResult"></div>
         <div id="speedResult"></div>
-        <div id="stabilityResult"></div>
         <div id="symmetryResult"></div>
       </div>
 
@@ -346,6 +348,11 @@
         <h3>③ あなたにおすすめのセルフエクササイズ</h3>
         <div id="exerciseContent"></div>
       </div>
+
+      <!-- PDFレポート作成ボタン -->
+      <button id="pdfReportBtn" class="primary-button" style="margin-top:12px;">
+        PDFレポートを作成
+      </button>
 
       <h3 style="margin-top:20px;">回復の変化を比べる</h3>
       <table id="resultTable" class="ios-table">

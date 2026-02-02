@@ -24,6 +24,21 @@ let recordedChunks = [];
 let hasRecordedVideo = false;
 
 /* ---------------------------------------------------------
+  PDFレポート用：直近の解析結果を保持
+--------------------------------------------------------- */
+let lastAnalysisResult = {
+  pelvisR: 0,
+  pelvisL: 0,
+  abdR: 0,
+  abdL: 0,
+  addR: 0,
+  addL: 0,
+  speedPercent: 0,
+  types: [],
+  conditionLabel: ""
+};
+
+/* ---------------------------------------------------------
   セルフエクササイズ一覧（カテゴリ付き）
 --------------------------------------------------------- */
 const exerciseList = [
@@ -735,6 +750,19 @@ async function analyzeVideo() {
 
     document.getElementById("exerciseBox").style.display = "block";
 
+    // ▼ PDF用に解析結果を保存
+    lastAnalysisResult = {
+      pelvisR: maxPelvisTiltRight,
+      pelvisL: maxPelvisTiltLeft,
+      abdR: maxHipAbductionRight,
+      abdL: maxHipAbductionLeft,
+      addR: maxHipAdductionRight,
+      addL: maxHipAdductionLeft,
+      speedPercent: gaitSpeedPercent,
+      types,
+      conditionLabel
+    };
+
     video.controls = true;
     analyzeBtn.disabled = false;
   }
@@ -743,15 +771,92 @@ async function analyzeVideo() {
 }
 
 /* ---------------------------------------------------------
-  解析ボタン
+  PDFレポート生成（jsPDF）
 --------------------------------------------------------- */
-document
-  .getElementById("analyzeVideoBtn")
-  .addEventListener("click", analyzeVideo);
+async function generatePdfReport() {
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) {
+    alert("PDFライブラリの読み込みに失敗しました。");
+    return;
+  }
 
-/* ---------------------------------------------------------
-  初期化：履歴読み込み
---------------------------------------------------------- */
-document.addEventListener("DOMContentLoaded", () => {
-  loadHistory();
-});
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4"
+  });
+
+  const marginLeft = 15;
+  let cursorY = 20;
+
+  // タイトル
+  doc.setFontSize(18);
+  doc.text("歩行解析レポート", marginLeft, cursorY);
+  cursorY += 10;
+
+  // 条件
+  doc.setFontSize(12);
+  if (lastAnalysisResult.conditionLabel) {
+    doc.text(`条件：${lastAnalysisResult.conditionLabel}`, marginLeft, cursorY);
+    cursorY += 8;
+  }
+
+  // 数値
+  doc.text(
+    `骨盤の傾き  右：${lastAnalysisResult.pelvisR.toFixed(1)}°  左：${lastAnalysisResult.pelvisL.toFixed(1)}°`,
+    marginLeft,
+    cursorY
+  );
+  cursorY += 6;
+
+  doc.text(
+    `外転角度    右：${lastAnalysisResult.abdR.toFixed(1)}°  左：${lastAnalysisResult.abdL.toFixed(1)}°`,
+    marginLeft,
+    cursorY
+  );
+  cursorY += 6;
+
+  doc.text(
+    `内転角度    右：${lastAnalysisResult.addR.toFixed(1)}°  左：${lastAnalysisResult.addL.toFixed(1)}°`,
+    marginLeft,
+    cursorY
+  );
+  cursorY += 6;
+
+  doc.text(
+    `歩行速度（相対）：${lastAnalysisResult.speedPercent.toFixed(1)} %`,
+    marginLeft,
+    cursorY
+  );
+  cursorY += 10;
+
+  // 歩行タイプ診断
+  doc.setFontSize(14);
+  doc.text("歩き方の特徴", marginLeft, cursorY);
+  cursorY += 6;
+
+  doc.setFontSize(11);
+  lastAnalysisResult.types.forEach((t) => {
+    const lines = doc.splitTextToSize(t, 180);
+    doc.text(lines, marginLeft, cursorY);
+    cursorY += lines.length * 5 + 2;
+  });
+
+  // 画像（骨格モデル付き）
+  const canvas = document.getElementById("analysisCanvas");
+  if (canvas && canvas.width > 0) {
+    const imgData = canvas.toDataURL("image/png");
+
+    const imgWidth = 180;
+    const imgHeight = (canvas.height / canvas.width) * imgWidth;
+
+    if (cursorY + imgHeight + 10 > 290) {
+      doc.addPage();
+      cursorY = 20;
+    }
+
+    doc.setFontSize(14);
+    doc.text("解析に使用した歩行画像", marginLeft, cursorY);
+    cursorY += 6;
+
+    doc.addImage(imgData, "PNG", marginLeft, cursor
