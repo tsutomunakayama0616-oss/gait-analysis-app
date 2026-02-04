@@ -26,9 +26,6 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- jsPDF（PDF生成） -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-
   <!-- MediaPipe PoseLandmarker -->
   <script type="module">
     import {
@@ -349,11 +346,6 @@
         <div id="exerciseContent"></div>
       </div>
 
-      <!-- PDFレポート作成ボタン -->
-      <button id="pdfReportBtn" class="primary-button" style="margin-top:12px;">
-        PDFレポートを作成
-      </button>
-
       <h3 style="margin-top:20px;">回復の変化を比べる</h3>
       <table id="resultTable" class="ios-table">
         <thead>
@@ -376,4 +368,28 @@
 
 <script src="script.js"></script>
 </body>
+
 </html>
+
+【manifest.json】
+{
+  "name": "歩行解析アプリ",
+  "short_name": "歩行解析",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#007aff",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+
+}
