@@ -745,4 +745,3 @@ document.getElementById("analyzeVideoBtn").addEventListener("click", () => {
 window.addEventListener("load", () => {
   loadHistory();
 });
-}
