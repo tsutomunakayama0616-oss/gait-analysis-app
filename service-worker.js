@@ -1,9 +1,9 @@
 // ------------------------------------------------------------
-//  歩行解析アプリ PWA Service Worker（v4）
+//  歩行解析アプリ PWA Service Worker（v5）
 //  ※ script.js / index.html を更新したら CACHE_NAME を上げる
 // ------------------------------------------------------------
 
-const CACHE_NAME = "gait-app-cache-v4";   // ★ここを更新（v3 → v4）
+const CACHE_NAME = "gait-app-cache-v5";
 const URLS_TO_CACHE = [
   "./",
   "./index.html",
@@ -51,4 +51,5 @@ self.addEventListener("fetch", (event) => {
       return response || fetch(event.request);
     })
   );
+
 });
