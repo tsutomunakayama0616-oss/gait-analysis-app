@@ -10,8 +10,7 @@ const URLS_TO_CACHE = [
   "./script.js",
   "./manifest.json",
   "./icon-192.png",
-  "./icon-512.png",
-  "./pdf-font.js"
+  "./icon-512.png"
 ];
 
 // ------------------------------------------------------------
@@ -54,4 +53,3 @@ self.addEventListener("fetch", (event) => {
   );
 
 });
-
