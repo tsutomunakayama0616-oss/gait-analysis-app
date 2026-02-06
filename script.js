@@ -746,6 +746,7 @@ async function analyzeVideo() {
     }
 
     document.getElementById("exerciseBox").style.display = "block";
+    }
 
     // ▼ PDF用に解析結果を保存
     lastAnalysisResult = {
@@ -891,3 +892,4 @@ document.getElementById("analyzeVideoBtn").addEventListener("click", () => {
 window.addEventListener("load", () => {
   loadHistory();
 });
+
