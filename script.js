@@ -38,7 +38,6 @@ document.getElementById("patientModeBtn").addEventListener("click", () => {
   document.getElementById("startSection").style.display = "none";
   document.getElementById("modeSwitchWrapper").style.display = "block";
 
-  // 患者様用は「動作解析」から開始
   document.getElementById("videoSection").classList.add("active");
   document.getElementById("usageSection").classList.remove("active");
   document.getElementById("liveSection").classList.remove("active");
@@ -47,7 +46,6 @@ document.getElementById("patientModeBtn").addEventListener("click", () => {
   document.getElementById("usageModeBtn").classList.remove("active");
   document.getElementById("liveModeBtn").classList.remove("active");
 
-  // 患者様用はグラフ非表示
   document.getElementById("resultTable").style.display = "none";
   document.getElementById("compareChart").style.display = "none";
   document.getElementById("historyTitle").style.display = "none";
@@ -67,7 +65,6 @@ document.getElementById("therapistModeBtn").addEventListener("click", () => {
   document.getElementById("liveModeBtn").classList.remove("active");
   document.getElementById("videoModeBtn").classList.remove("active");
 
-  // PT用は解析後に表示するため初期は非表示
   document.getElementById("resultTable").style.display = "none";
   document.getElementById("compareChart").style.display = "none";
   document.getElementById("historyTitle").style.display = "none";
@@ -104,6 +101,21 @@ document.getElementById("videoModeBtn").addEventListener("click", () => {
   document.getElementById("videoModeBtn").classList.add("active");
   document.getElementById("usageModeBtn").classList.remove("active");
   document.getElementById("liveModeBtn").classList.remove("active");
+});
+
+/* ---------------------------------------------------------
+  撮影補助：チェックリスト → 全チェックで撮影開始
+--------------------------------------------------------- */
+const liveChecks = document.querySelectorAll(".live-check");
+const startLiveBtn = document.getElementById("startLiveBtn");
+
+function updateLiveStartButton() {
+  const allChecked = Array.from(liveChecks).every(ch => ch.checked);
+  startLiveBtn.disabled = !allChecked;
+}
+
+liveChecks.forEach(ch => {
+  ch.addEventListener("change", updateLiveStartButton);
 });
 
 /* ---------------------------------------------------------
@@ -394,7 +406,7 @@ document.getElementById("analyzeVideoBtn").addEventListener("click", async () =>
       document.getElementById("resultTable").style.display = "table";
       document.getElementById("compareChart").style.display = "block";
     } else {
-      document.getElementById("resultBox").style.display = "none";
+      document.getElementById("resultBox").style.display = "block";
       document.getElementById("historyTitle").style.display = "block";
       document.getElementById("resultTable").style.display = "table";
       document.getElementById("compareChart").style.display = "none";
@@ -403,7 +415,7 @@ document.getElementById("analyzeVideoBtn").addEventListener("click", async () =>
     document.getElementById("videoStatus").textContent = "解析が完了しました。";
     analyzeBtn.disabled = false;
 
-    // 次の部で特徴・エクササイズ・履歴などを処理
+    finalizeAnalysis();
   }
 
   processFrame();
@@ -511,13 +523,65 @@ function recommendExercises(pR, pL, abdR, abdL, addR, addL, speed) {
 }
 
 /* ---------------------------------------------------------
+  色分けロジック
+--------------------------------------------------------- */
+function colorizeResult(value, type) {
+  if (type === "pelvis") {
+    if (value >= 15) return "danger";
+    if (value >= 10) return "warning";
+    return "normal";
+  }
+  if (type === "abd") {
+    if (value <= 3) return "danger";
+    if (value <= 5) return "warning";
+    return "normal";
+  }
+  if (type === "add") {
+    if (value >= 15) return "danger";
+    if (value >= 10) return "warning";
+    return "normal";
+  }
+  if (type === "speed") {
+    if (value < 70 || value > 130) return "danger";
+    if (value < 80 || value > 120) return "warning";
+    return "normal";
+  }
+  return "normal";
+}
+
+function setColoredValue(id, value, type) {
+  const cell = document.getElementById(id);
+  cell.textContent = value.toFixed(1);
+
+  const status = colorizeResult(value, type);
+  cell.classList.remove("result-normal", "result-warning", "result-danger");
+  cell.classList.add(`result-${status}`);
+}
+
+/* ---------------------------------------------------------
   解析後の表示処理（特徴・エクササイズ・履歴）
 --------------------------------------------------------- */
 function finalizeAnalysis() {
   const r = lastAnalysisResult;
 
   /* -------------------------------
-     特徴（一般＋THA）
+     ① 歩き方の結果（左右別）
+  -------------------------------- */
+  setColoredValue("pelvisRCell", r.pelvisR, "pelvis");
+  setColoredValue("pelvisLCell", r.pelvisL, "pelvis");
+  setColoredValue("abdRCell", r.abdR, "abd");
+  setColoredValue("abdLCell", r.abdL, "abd");
+  setColoredValue("addRCell", r.addR, "add");
+  setColoredValue("addLCell", r.addL, "add");
+
+  const speedCell = document.getElementById("speedCell");
+  speedCell.textContent = r.speedPercent.toFixed(1);
+  const speedStatus = colorizeResult(r.speedPercent, "speed");
+  speedCell.classList.remove("result-normal", "result-warning", "result-danger");
+  speedCell.classList.add(`result-${speedStatus}`);
+
+  /* -------------------------------
+     ② 特徴（一般＋THA）
   -------------------------------- */
   let types = diagnoseGait(
     r.pelvisR, r.pelvisL,
@@ -536,7 +600,7 @@ function finalizeAnalysis() {
      <ul>${types.map(t => `<li>${t}</li>`).join("")}</ul>`;
 
   /* -------------------------------
-     エクササイズ推薦
+     ③ エクササイズ推薦
   -------------------------------- */
   const exercises = recommendExercises(
     r.pelvisR, r.pelvisL,
@@ -548,7 +612,10 @@ function finalizeAnalysis() {
   if (exercises.length > 0) {
     document.getElementById("exerciseBox").style.display = "block";
     document.getElementById("exerciseBox").innerHTML =
-      `<h3>${userMode === "therapist" ? "③ おすすめのセルフエクササイズ" : "② あなたにおすすめのセルフエクササイズ"}</h3>
+      `<h3>${userMode === "therapist"
+          ? "③ おすすめのセルフエクササイズ"
+          : "② あなたにおすすめのセルフエクササイズ"
+        }</h3>
        ${exercises.map(ex => `
          <div style="margin-bottom:12px;">
            <strong>${ex.category}</strong><br>
@@ -561,7 +628,7 @@ function finalizeAnalysis() {
   }
 
   /* -------------------------------
-     履歴保存
+     ④ 履歴保存
   -------------------------------- */
   const label = document.getElementById("surgeryDiffText").textContent || `解析${historyLabels.length + 1}`;
   historyLabels.push(label);
