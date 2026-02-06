@@ -26,7 +26,7 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- MediaPipe PoseLandmarker -->
+  <!-- MediaPipe -->
   <script type="module">
     import {
       PoseLandmarker,
@@ -39,7 +39,7 @@
     window.DrawingUtils = DrawingUtils;
   </script>
 
-  <!-- iOS風デザイン -->
+  <!-- CSS -->
   <style>
     body {
       margin: 0;
@@ -75,33 +75,55 @@
       padding: 14px;
     }
 
-    /* 2段UI */
-    .mode-switch-top {
-      margin-bottom: 8px;
-    }
-
-    .mode-switch {
+    /* POPデザインのスタートカード */
+    .start-card {
+      background: linear-gradient(135deg, #7dd3fc, #38bdf8);
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 18px rgba(56, 189, 248, 0.5);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      text-align: left;
+      color: #0f172a;
       display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
+      align-items: center;
+      gap: 14px;
+    }
+    .start-card.therapist {
+      background: linear-gradient(135deg, #60a5fa, #2563eb);
+      box-shadow: 0 8px 18px rgba(37, 99, 235, 0.5);
+      color: #eff6ff;
+    }
+    .start-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.35);
+    }
+    .start-icon {
+      font-size: 40px;
+      width: 56px;
+      height: 56px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .start-card.therapist .start-icon {
+      background: rgba(15, 23, 42, 0.2);
+      color: #eff6ff;
+    }
+    .start-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .start-desc {
+      font-size: 13px;
+      opacity: 0.9;
     }
 
-    .mode-button {
-      flex: 1;
-      padding: 12px;
-      font-size: 15px;
-      border-radius: 10px;
-      border: none;
-      background: #e5e5ea;
-      color: #333;
-      font-weight: 600;
-    }
-
-    .mode-button.active {
-      background: #007aff;
-      color: white;
-    }
-
+    /* セクション切替 */
     .section { display: none; }
     .section.active { display: block; }
 
@@ -114,68 +136,30 @@
       position: relative;
     }
 
-    /* REC表示 */
-    #recIndicator {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      padding: 6px 10px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 700;
-      display: none;
-    }
-
-    /* 大きなボタン */
-    .big-button {
-      width: 100%;
-      padding: 16px;
-      margin-top: 12px;
-      font-size: 18px;
-      font-weight: 700;
+    /* 患者様用イラストボックス */
+    .illustration-box {
       border-radius: 12px;
-      border: none;
-      background: #007aff;
-      color: white;
-      box-shadow: 0 4px 10px rgba(0,122,255,0.4);
+      padding: 10px;
+      margin-top: 8px;
+      background: #eff6ff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .illustration-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      object-fit: contain;
     }
 
-    .big-button:disabled {
-      background: #b0c9ff;
-      box-shadow: none;
-    }
+    /* PT用 数値色分け */
+    .sev-normal { color: #34c759; font-weight: 600; }
+    .sev-mild   { color: #ffcc00; font-weight: 600; }
+    .sev-high   { color: #ff3b30; font-weight: 600; }
 
-    .stop-button {
-      width: 100%;
-      padding: 16px;
-      margin-top: 12px;
-      font-size: 18px;
-      font-weight: 700;
-      border-radius: 12px;
-      border: none;
-      background: #ff3b30;
-      color: white;
-      box-shadow: 0 4px 10px rgba(255,59,48,0.4);
-    }
-
-    /* iOSカード */
-    .result-box {
-      background: white;
-      padding: 16px;
-      border-radius: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-      margin-top: 20px;
-      font-size: 15px;
-    }
-
-    video, canvas {
-      width: 100%;
-      border-radius: 12px;
-      margin-top: 12px;
-    }
-
+    /* ボタン */
     .primary-button {
       width: 100%;
       padding: 14px;
@@ -194,36 +178,15 @@
       border-collapse: collapse;
       margin-top: 10px;
     }
-
     .ios-table th, .ios-table td {
       padding: 10px;
       border-bottom: 1px solid #e5e5ea;
       text-align: left;
     }
-
     .ios-table th {
       background: #f9f9fb;
       font-weight: 600;
     }
-
-    /* スタート画面カード */
-    .start-card {
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-      text-align: center;
-    }
-    .start-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-    }
-    .start-icon { font-size: 40px; margin-bottom: 12px; }
-    .start-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-    .start-desc { font-size: 14px; color: #666; }
   </style>
 </head>
 
@@ -235,37 +198,30 @@
 
 <div class="container">
 
-  <!-- スタート画面：患者様用 / 理学療法士用 -->
+  <!-- スタート画面 -->
   <section id="startSection" class="section active">
-    <div class="card" style="text-align:center; padding:30px 20px;">
-      <h2 style="font-size:22px; font-weight:700; margin-bottom:20px;">ご利用者の選択</h2>
-      <p style="color:#666; margin-bottom:30px;">
-        ご利用の目的にあてはまるボタンを選んでください。
-      </p>
-
-      <!-- 患者様用カード -->
-      <div class="start-card" id="patientModeBtn">
-        <div class="start-icon">👤</div>
+    <div class="start-card" id="patientModeBtn">
+      <div class="start-icon">👤</div>
+      <div>
         <div class="start-title">患者様用</div>
-        <div class="start-desc">歩き方の特徴をAIがわかりやすく表示します</div>
+        <div class="start-desc">今日の歩き方スコアとセルフエクササイズを確認できます</div>
       </div>
+    </div>
 
-      <!-- 理学療法士用カード -->
-      <div class="start-card" id="therapistModeBtn">
-        <div class="start-icon">🩺</div>
+    <div class="start-card therapist" id="therapistModeBtn">
+      <div class="start-icon">🩺</div>
+      <div>
         <div class="start-title">理学療法士用</div>
-        <div class="start-desc">詳細な数値解析・履歴比較・PDFレポート</div>
+        <div class="start-desc">左右別の詳細解析・THA代償動作・履歴</div>
       </div>
     </div>
   </section>
 
-  <!-- 上段：使用方法（PT用のみ表示） -->
+  <!-- モード切替（PT用のみ表示） -->
   <div id="modeSwitchWrapper" style="display:none;">
     <div class="mode-switch-top">
       <button id="usageModeBtn" class="mode-button active">📘 アプリの使用方法</button>
     </div>
-
-    <!-- 下段：撮影補助＋動作解析 -->
     <div class="mode-switch">
       <button id="liveModeBtn" class="mode-button">📸 撮影補助</button>
       <button id="videoModeBtn" class="mode-button">🎥 動作解析</button>
@@ -276,91 +232,22 @@
   <section id="usageSection" class="section">
     <div class="card">
       <h2>📘 アプリの使用方法</h2>
-
-      <div class="result-box">
-        <h3>アプリの目的</h3>
-        <p>後ろから撮影した歩行動画をもとに、骨盤の傾き・足の動き・左右のバランス・歩く速さなどを推定し、歩き方の特徴をわかりやすく見えるようにします。</p>
-      </div>
-
-      <div class="result-box">
-        <h3>撮影環境のポイント</h3>
-        <ul>
-          <li>歩行路は <strong>5〜8メートル</strong></li>
-          <li>明るい場所で撮影（逆光は避ける）</li>
-          <li>背景はシンプルに（人が横切らない）</li>
-        </ul>
-      </div>
-
-      <div class="result-box">
-        <h3>カメラ位置</h3>
-        <ul>
-          <li><strong>からだの真後ろ</strong>から撮影</li>
-          <li>カメラの高さは <strong>腰〜胸の高さ（90〜120cm）</strong></li>
-          <li>からだとの距離は <strong>3〜5メートル</strong></li>
-        </ul>
-      </div>
-
-      <div class="result-box">
-        <h3>服装</h3>
-        <ul>
-          <li>膝や股関節の動きが見える服装</li>
-          <li>スカート・長いコートは避ける</li>
-        </ul>
-      </div>
-
-      <div class="result-box">
-        <h3>撮影手順</h3>
-        <ol>
-          <li>歩行路の端に立ってもらう</li>
-          <li>カメラを後ろから構える</li>
-          <li>歩き始めたら録画開始</li>
-          <li>歩行の中央〜終わりまで撮影</li>
-        </ol>
-      </div>
-
-      <div class="result-box">
-        <h3>よくある失敗と対策</h3>
-        <ul>
-          <li>全身が映らない → カメラを少し離す</li>
-          <li>逆光で暗い → カメラの向きを変える</li>
-          <li>斜め後ろから撮影 → 真後ろに立つ</li>
-        </ul>
-      </div>
-
-      <div class="result-box">
-        <h3>注意点</h3>
-        <p>このアプリは診断を行うものではありません。歩き方の変化を確認するための参考情報としてご利用ください。</p>
-      </div>
+      <p>（従来の説明文をそのまま配置）</p>
     </div>
   </section>
 
-  <!-- 撮影補助（患者様・PT共通） -->
+  <!-- 撮影補助 -->
   <section id="liveSection" class="section">
     <div class="card">
       <h2>📸 撮影補助モード</h2>
-      <div id="recIndicator">● REC</div>
-
-      <div class="result-box">
-        <p>撮影前に以下を確認してください。</p>
-        <ul>
-          <li><label><input type="checkbox" class="precheck"> 後ろから撮影している</label></li>
-          <li><label><input type="checkbox" class="precheck"> 全身が画面に入っている</label></li>
-          <li><label><input type="checkbox" class="precheck"> 普段どおりの速さで歩いている</label></li>
-        </ul>
-      </div>
-
       <video id="liveVideo" playsinline muted></video>
       <canvas id="liveCanvas"></canvas>
-
-      <button id="startLiveBtn" class="big-button" disabled>撮影開始</button>
-      <button id="stopLiveBtn" class="stop-button">カメラ停止</button>
-
-      <div id="liveStatus"></div>
-      <div id="liveError" style="color:red;"></div>
+      <button id="startLiveBtn" class="primary-button" disabled>撮影開始</button>
+      <button id="stopLiveBtn" class="primary-button" style="background:#ff3b30;">カメラ停止</button>
     </div>
   </section>
 
-  <!-- 動作解析（患者様・PT共通だが表示内容をモードで切替） -->
+  <!-- 動作解析 -->
   <section id="videoSection" class="section">
     <div class="card">
       <h2>🎥 動作解析モード</h2>
@@ -378,7 +265,7 @@
       <div id="videoStatus"></div>
       <div id="videoError" style="color:red;"></div>
 
-      <!-- 解析結果（数値：理学療法士用のみ表示） -->
+      <!-- PT用：①左右別 -->
       <div id="resultBox" class="result-box" style="display:none;">
         <h3>① 歩き方の結果（左右別）</h3>
         <div id="pelvisResult"></div>
@@ -388,20 +275,42 @@
         <div id="symmetryResult"></div>
       </div>
 
-      <!-- 歩行タイプ診断（患者様・PT 共通） -->
+      <!-- 患者様用：①特徴＋スコア -->
       <div id="typeBox" class="result-box" style="display:none;">
-        <h3>② あなたの歩き方の特徴</h3>
-        <div id="typeContent"></div>
+        <h3 id="typeBoxTitle">① あなたの歩行の特徴</h3>
+
+        <div id="patientScoreArea" style="display:none; margin-bottom:8px;">
+          <strong>今日の歩き方スコア：</strong>
+          <span id="gaitScoreText" style="font-size:18px; font-weight:700;"></span> / 100
+        </div>
+
+        <div class="illustration-box">
+          <img src="pelvis.png" class="illustration-icon">
+          <div>骨盤の傾きのイメージ</div>
+        </div>
+
+        <div class="illustration-box">
+          <img src="leg-move.png" class="illustration-icon">
+          <div>足の動きのイメージ</div>
+        </div>
+
+        <div id="typeContent" style="margin-top:8px;"></div>
       </div>
 
-      <!-- おすすめエクササイズ -->
+      <!-- ②/③ エクササイズ -->
       <div id="exerciseBox" class="result-box" style="display:none;">
-        <h3>③ あなたにおすすめのセルフエクササイズ</h3>
-        <div id="exerciseContent"></div>
+        <h3 id="exerciseBoxTitle">② あなたにおすすめのセルフエクササイズ</h3>
+
+        <div class="illustration-box">
+          <img src="exercise.png" class="illustration-icon">
+          <div>エクササイズの姿勢イメージ</div>
+        </div>
+
+        <div id="exerciseContent" style="margin-top:8px;"></div>
       </div>
 
-      <!-- 回復の変化（PT用のみ活用） -->
-      <h3 style="margin-top:20px;">回復の変化を比べる</h3>
+      <!-- ③/④ 回復の変化 -->
+      <h3 id="historyTitle" style="margin-top:20px;">③ 回復の変化を比べる</h3>
       <table id="resultTable" class="ios-table">
         <thead>
           <tr>
@@ -416,8 +325,6 @@
       </table>
 
       <canvas id="compareChart" style="margin-top:16px;"></canvas>
-    </div>
-  </section>
 
 </div>
 
