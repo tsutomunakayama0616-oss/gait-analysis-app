@@ -1,14 +1,13 @@
 /* ---------------------------------------------------------
    歩行解析アプリ - Service Worker（完全版）
    - オフライン対応
-   - ローカル画像（イラスト）キャッシュ対応
+   - ルート直下の画像キャッシュ対応
 --------------------------------------------------------- */
 
-const CACHE_NAME = "gait-analysis-app-v3";
+const CACHE_NAME = "gait-analysis-app-v4";
 
 /* ---------------------------------------------------------
    キャッシュするファイル一覧
-   ※ ローカル画像（イラスト）を含む
 --------------------------------------------------------- */
 const ASSETS = [
   "./",
@@ -17,14 +16,14 @@ const ASSETS = [
   "./manifest.json",
   "./pdf-font.js",
 
+  // ルート直下の画像
+  "./pelvis.png",
+  "./leg-move.png",
+  "./exercise.png",
+
   // アイコン
   "./icon-192.png",
   "./icon-512.png",
-
-  // ★ イラスト画像（患者様用）
-  "./img/pelvis.png",
-  "./img/leg-move.png",
-  "./img/exercise.png",
 
   // 外部ライブラリ
   "https://cdn.jsdelivr.net/npm/chart.js",
@@ -73,7 +72,6 @@ self.addEventListener("fetch", (event) => {
 
       return fetch(request)
         .then((response) => {
-          // 外部リソースもキャッシュに保存（任意）
           const cloned = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(request, cloned);
