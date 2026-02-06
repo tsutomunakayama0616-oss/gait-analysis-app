@@ -24,6 +24,21 @@ let recordedChunks = [];
 let hasRecordedVideo = false;
 
 /* ---------------------------------------------------------
+  PDFレポート用：直近の解析結果を保持
+--------------------------------------------------------- */
+let lastAnalysisResult = {
+  pelvisR: 0,
+  pelvisL: 0,
+  abdR: 0,
+  abdL: 0,
+  addR: 0,
+  addL: 0,
+  speedPercent: 0,
+  types: [],
+  conditionLabel: ""
+};
+
+/* ---------------------------------------------------------
   セルフエクササイズ一覧（カテゴリ付き）
 --------------------------------------------------------- */
 const exerciseList = [
@@ -731,6 +746,137 @@ async function analyzeVideo() {
     }
 
     document.getElementById("exerciseBox").style.display = "block";
+
+    // ▼ PDF用に解析結果を保存
+    lastAnalysisResult = {
+      pelvisR: maxPelvisTiltRight,
+      pelvisL: maxPelvisTiltLeft,
+      abdR: maxHipAbductionRight,
+      abdL: maxHipAbductionLeft,
+      addR: maxHipAdductionRight,
+      addL: maxHipAdductionLeft,
+      speedPercent: gaitSpeedPercent,
+      types,
+      conditionLabel
+    };
+
+  // ★ PDF 用：おすすめエクササイズを保存
+  lastAnalysisResult.exercises = recs;
+
+    video.controls = true;
+    analyzeBtn.disabled = false;
+  }
+
+  processFrame();
+}
+
+/* ---------------------------------------------------------
+   PDF レポート生成（添付PDFと同じ構成）
+--------------------------------------------------------- */
+function generatePdfReport() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4"
+  });
+
+  // 日本語フォント（pdf-font.js を読み込んでいる前提）
+  doc.setFont("NotoSansJP");
+
+  const margin = 15;
+  let y = margin;
+
+  /* ① タイトル */
+  doc.setFontSize(22);
+  doc.text("歩行解析レポート", margin, y);
+  y += 15;
+
+  /* ② 手術前後の日数 */
+  doc.setFontSize(14);
+  doc.text(lastAnalysisResult.conditionLabel, margin, y);
+  y += 15;
+
+  /* ③ 動画の静止画 */
+  const canvas = document.getElementById("analysisCanvas");
+const imgData = canvas.toDataURL("image/png");
+
+// キャンバスの実際の縦横比
+const canvasWidth = canvas.width;
+const canvasHeight = canvas.height;
+const aspectRatio = canvasWidth / canvasHeight;
+
+// PDF に貼る最大サイズ（mm）
+const maxWidth = 180;  // 横方向の最大幅
+const maxHeight = 120; // 縦方向の最大高さ
+
+let pdfWidth = maxWidth;
+let pdfHeight = pdfWidth / aspectRatio;
+
+// 高さがオーバーする場合は高さ基準に調整
+if (pdfHeight > maxHeight) {
+    pdfHeight = maxHeight;
+    pdfWidth = pdfHeight * aspectRatio;
+}
+
+doc.setFontSize(16);
+doc.text("動画の静止画", margin, y);
+y += 8;
+
+// 縦横比を維持したまま PDF に貼り付け
+doc.addImage(imgData, "PNG", margin, y, pdfWidth, pdfHeight);
+y += pdfHeight + 10;
+
+  /* ④ 歩き方の結果（左右別） */
+  doc.setFontSize(16);
+  doc.text("① 歩き方の結果（左右別）", margin, y);
+  y += 10;
+
+  doc.setFontSize(12);
+  const resultLines = [
+    `骨盤の傾き： 右 ${lastAnalysisResult.pelvisR.toFixed(1)}° / 左 ${lastAnalysisResult.pelvisL.toFixed(1)}°`,
+    `外転角度：   右 ${lastAnalysisResult.abdR.toFixed(1)}° / 左 ${lastAnalysisResult.abdL.toFixed(1)}°`,
+    `内転角度：   右 ${lastAnalysisResult.addR.toFixed(1)}° / 左 ${lastAnalysisResult.addL.toFixed(1)}°`,
+    `歩く速さ（相対速度）： ${lastAnalysisResult.speedPercent.toFixed(1)} %`
+  ];
+
+  resultLines.forEach(line => {
+    doc.text(line, margin, y);
+    y += 7;
+  });
+
+  y += 10;
+
+  /* ⑤ あなたの歩き方の特徴 */
+  doc.setFontSize(16);
+  doc.text("② あなたの歩き方の特徴", margin, y);
+  y += 10;
+
+  doc.setFontSize(12);
+  lastAnalysisResult.types.forEach(t => {
+    const lines = doc.splitTextToSize(t, 180);
+    doc.text(lines, margin, y);
+    y += lines.length * 6;
+  });
+
+  y += 10;
+
+  /* ⑥ おすすめエクササイズ */
+  doc.setFontSize(16);
+  doc.text("③ あなたにおすすめのセルフエクササイズ", margin, y);
+  y += 10;
+
+  doc.setFontSize(12);
+  lastAnalysisResult.exercises.forEach(ex => {
+    const line = `・${ex.name}`;
+    const lines = doc.splitTextToSize(line, 180);
+    doc.text(lines, margin, y);
+    y += lines.length * 6;
+  });
+
+  /* 保存 */
+  doc.save("gait-report.pdf");
+}
 
 /* ---------------------------------------------------------
   「動作を解析する」ボタン
