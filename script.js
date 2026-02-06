@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------
-  グローバル変数
+グローバル変数
 --------------------------------------------------------- */
 let poseLandmarker = null;
 let runningMode = "IMAGE";
@@ -23,8 +23,14 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let hasRecordedVideo = false;
 
+// 直近フレームのランドマーク（THA判定用）
+let lastLandmarks = null;
+
+// 利用者モード："none" | "patient" | "therapist"
+let userMode = "none";
+
 /* ---------------------------------------------------------
-  PDFレポート用：直近の解析結果を保持
+PDFレポート用：直近の解析結果を保持
 --------------------------------------------------------- */
 let lastAnalysisResult = {
   pelvisR: 0,
@@ -39,31 +45,27 @@ let lastAnalysisResult = {
 };
 
 /* ---------------------------------------------------------
-  セルフエクササイズ一覧（カテゴリ付き）
+セルフエクササイズ一覧（カテゴリ付き）
 --------------------------------------------------------- */
 const exerciseList = [
   { id:1, category:"ストレッチ", name:"太もものうしろを伸ばすストレッチ", url:"https://youtu.be/ihchQBuigY0" },
   { id:2, category:"ストレッチ", name:"太ももの前を伸ばすストレッチ", url:"https://youtu.be/lVpF9TiepLg" },
   { id:3, category:"ストレッチ", name:"股関節の前を伸ばすストレッチ", url:"https://youtu.be/XIA80pBZ3ws" },
   { id:4, category:"ストレッチ", name:"内ももを伸ばすストレッチ", url:"https://youtu.be/racb4M_hycM" },
-
   { id:7, category:"筋力トレーニング（おしり）", name:"おしりの筋肉を意識して力を入れる運動", url:"https://youtu.be/4ckJ67_8IB8" },
   { id:8, category:"筋力トレーニング（おしり）", name:"おしりの筋肉を使ったブリッジ運動", url:"https://youtu.be/9zKZ-YRmU8I" },
   { id:9, category:"筋力トレーニング（おしり）", name:"立ったまま行うおしりの横の筋トレ", url:"https://youtu.be/aikGoCaTFFI" },
-
   { id:10, category:"筋力トレーニング（太もも）", name:"太ももの前の筋肉を目覚めさせる運動", url:"https://youtu.be/rweyU-3O3zo" },
   { id:11, category:"筋力トレーニング（太もも）", name:"足を持ち上げる運動（SLR）", url:"https://youtu.be/fNM6w_RnVRk" },
-
   { id:14, category:"バランス練習", name:"前後に足を並べて立つバランス練習", url:"https://youtu.be/F0OVS9LT1w4" },
   { id:15, category:"バランス練習", name:"片脚立ちのバランス練習", url:"https://youtu.be/HUjoGJtiknc" },
-
   { id:16, category:"有酸素運動", name:"ウォーキング", url:"https://youtu.be/Cs4NOzgkS8s" },
   { id:17, category:"有酸素運動", name:"自転車こぎの運動", url:"https://youtu.be/12_J_pr-MUE" },
   { id:18, category:"有酸素運動", name:"水の中での運動", url:"https://youtu.be/xqj3dn9mw50" }
 ];
 
 /* ---------------------------------------------------------
-  YouTube サムネイル生成
+YouTube サムネイル生成
 --------------------------------------------------------- */
 function getThumbnail(url) {
   const id = url.split("youtu.be/")[1];
@@ -71,7 +73,7 @@ function getThumbnail(url) {
 }
 
 /* ---------------------------------------------------------
-  履歴の保存・読み込み
+履歴の保存・読み込み
 --------------------------------------------------------- */
 function saveHistory() {
   const data = {
@@ -129,11 +131,10 @@ function loadHistory() {
 }
 
 /* ---------------------------------------------------------
-  MediaPipe PoseLandmarker 初期化
+MediaPipe PoseLandmarker 初期化
 --------------------------------------------------------- */
 async function initPoseLandmarker() {
   if (poseLandmarker) return;
-
   if (!window.FilesetResolver || !window.PoseLandmarker || !window.DrawingUtils) {
     console.error("MediaPipe がまだ読み込まれていません。");
     return;
@@ -156,28 +157,58 @@ async function initPoseLandmarker() {
 }
 
 /* ---------------------------------------------------------
-  手術日 → 手術前◯日 / 手術後◯日
+手術日 → 手術前◯日 / 手術後◯日
 --------------------------------------------------------- */
 document.getElementById("surgeryDate").addEventListener("change", () => {
   const inputDate = new Date(document.getElementById("surgeryDate").value);
   const today = new Date();
-
   if (isNaN(inputDate.getTime())) {
     document.getElementById("surgeryDiffText").textContent = "";
     return;
   }
-
   const diffDays = Math.floor((today - inputDate) / (1000 * 60 * 60 * 24));
   const text =
     diffDays >= 0
       ? `手術後 ${diffDays}日`
       : `手術前 ${Math.abs(diffDays)}日`;
-
   document.getElementById("surgeryDiffText").textContent = text;
 });
 
 /* ---------------------------------------------------------
-  モード切替（使用方法・撮影補助・動作解析）
+スタート画面：患者様用 / 理学療法士用
+--------------------------------------------------------- */
+document.getElementById("patientModeBtn").addEventListener("click", () => {
+  userMode = "patient";
+  document.getElementById("startSection").classList.remove("active");
+  document.getElementById("startSection").style.display = "none";
+
+  document.getElementById("modeSwitchWrapper").style.display = "block";
+  document.getElementById("usageSection").classList.add("active");
+  document.getElementById("liveSection").classList.remove("active");
+  document.getElementById("videoSection").classList.remove("active");
+
+  document.getElementById("usageModeBtn").classList.add("active");
+  document.getElementById("liveModeBtn").classList.remove("active");
+  document.getElementById("videoModeBtn").classList.remove("active");
+});
+
+document.getElementById("therapistModeBtn").addEventListener("click", () => {
+  userMode = "therapist";
+  document.getElementById("startSection").classList.remove("active");
+  document.getElementById("startSection").style.display = "none";
+
+  document.getElementById("modeSwitchWrapper").style.display = "block";
+  document.getElementById("usageSection").classList.add("active");
+  document.getElementById("liveSection").classList.remove("active");
+  document.getElementById("videoSection").classList.remove("active");
+
+  document.getElementById("usageModeBtn").classList.add("active");
+  document.getElementById("liveModeBtn").classList.remove("active");
+  document.getElementById("videoModeBtn").classList.remove("active");
+});
+
+/* ---------------------------------------------------------
+モード切替（使用方法・撮影補助・動作解析）
 --------------------------------------------------------- */
 document.getElementById("usageModeBtn").addEventListener("click", () => {
   document.getElementById("usageSection").classList.add("active");
@@ -210,7 +241,7 @@ document.getElementById("videoModeBtn").addEventListener("click", () => {
 });
 
 /* ---------------------------------------------------------
-  撮影補助モード：チェックリスト
+撮影補助モード：チェックリスト
 --------------------------------------------------------- */
 const prechecks = document.querySelectorAll(".precheck");
 prechecks.forEach((chk) => {
@@ -221,7 +252,7 @@ prechecks.forEach((chk) => {
 });
 
 /* ---------------------------------------------------------
-  角度計算（3点からの角度）
+角度計算（3点からの角度）
 --------------------------------------------------------- */
 function angleDeg(ax, ay, bx, by, cx, cy) {
   const v1x = ax - bx;
@@ -238,12 +269,10 @@ function angleDeg(ax, ay, bx, by, cx, cy) {
 }
 
 /* ---------------------------------------------------------
-  撮影補助モード：カメラ起動＋録画
+撮影補助モード：カメラ起動＋録画
 --------------------------------------------------------- */
 document.getElementById("startLiveBtn").addEventListener("click", async () => {
-
   document.getElementById("liveError").textContent = "";
-
   try {
     await initPoseLandmarker();
     if (!poseLandmarker) {
@@ -265,15 +294,12 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
     video.muted = true;
-
     await video.play();
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
     document.getElementById("liveStatus").textContent = "カメラ起動中（録画中）…";
-
-    // REC表示
     document.getElementById("recIndicator").style.display = "inline-block";
 
     const drawingUtils = new window.DrawingUtils(ctx);
@@ -281,11 +307,9 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
     // 録画開始
     recordedChunks = [];
     mediaRecorder = new MediaRecorder(liveStream, { mimeType: "video/webm" });
-
     mediaRecorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) recordedChunks.push(e.data);
     };
-
     mediaRecorder.onstop = () => {
       const blob = new Blob(recordedChunks, { type: "video/webm" });
       const url = URL.createObjectURL(blob);
@@ -301,7 +325,6 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
       document.getElementById("videoStatus").textContent =
         "撮影した動画が読み込まれました。「動作を解析する」を押してください。";
     };
-
     mediaRecorder.start();
 
     function liveLoop() {
@@ -316,7 +339,6 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
 
       if (result && result.landmarks && result.landmarks.length > 0) {
         const lm = result.landmarks[0];
-
         drawingUtils.drawLandmarks(lm, { radius: 3, color: "#ff3b30" });
         drawingUtils.drawConnectors(
           lm,
@@ -330,7 +352,6 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
     }
 
     liveLoop();
-
   } catch (err) {
     console.error(err);
     document.getElementById("liveError").textContent =
@@ -339,7 +360,7 @@ document.getElementById("startLiveBtn").addEventListener("click", async () => {
 });
 
 /* ---------------------------------------------------------
-  カメラ停止＋録画停止
+カメラ停止＋録画停止
 --------------------------------------------------------- */
 document.getElementById("stopLiveBtn").addEventListener("click", () => {
   if (liveAnimationId) {
@@ -353,13 +374,12 @@ document.getElementById("stopLiveBtn").addEventListener("click", () => {
   if (mediaRecorder && mediaRecorder.state !== "inactive") {
     mediaRecorder.stop();
   }
-
   document.getElementById("recIndicator").style.display = "none";
   document.getElementById("liveStatus").textContent = "カメラ停止";
 });
 
 /* ---------------------------------------------------------
-  動画読み込み（スマホ内の動画）
+動画読み込み（スマホ内の動画）
 --------------------------------------------------------- */
 document.getElementById("videoFileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
@@ -379,11 +399,10 @@ document.getElementById("videoFileInput").addEventListener("change", (e) => {
 });
 
 /* ---------------------------------------------------------
-  グラフ更新（Chart.js）
+グラフ更新（Chart.js）
 --------------------------------------------------------- */
 function updateCompareChart() {
   const ctx = document.getElementById("compareChart").getContext("2d");
-
   if (compareChart) compareChart.destroy();
 
   compareChart = new Chart(ctx, {
@@ -437,7 +456,7 @@ function updateCompareChart() {
 }
 
 /* ---------------------------------------------------------
-  歩行タイプ診断（やさしい表現）
+歩行タイプ診断（やさしい表現）
 --------------------------------------------------------- */
 function diagnoseGait(pelvisR, pelvisL, abdR, abdL, addR, addL, speedPercent) {
   const types = [];
@@ -461,14 +480,57 @@ function diagnoseGait(pelvisR, pelvisL, abdR, abdL, addR, addL, speedPercent) {
 }
 
 /* ---------------------------------------------------------
-  エクササイズ選択（カテゴリ別）
+THA特有の代償動作の診断
+--------------------------------------------------------- */
+function diagnoseTHA(landmarks) {
+  const typesTHA = [];
+  if (!landmarks || landmarks.length < 29) return typesTHA;
+
+  const rightHip = landmarks[24];
+  const leftHip  = landmarks[23];
+  const rightAnkle = landmarks[28];
+  const leftAnkle  = landmarks[27];
+  const rightShoulder = landmarks[12];
+  const leftShoulder  = landmarks[11];
+
+  // トレンデレンブルグ徴候（立脚側で対側骨盤が下がる）
+  const pelvisDropRight = leftHip.y - rightHip.y; // 右立脚時
+  const pelvisDropLeft  = rightHip.y - leftHip.y; // 左立脚時
+  if (pelvisDropRight > 0.03)
+    typesTHA.push("右脚で立っているときに、反対側の骨盤が下がりやすい傾向があります（トレンデレンブルグ徴候）。");
+  if (pelvisDropLeft > 0.03)
+    typesTHA.push("左脚で立っているときに、反対側の骨盤が下がりやすい傾向があります（トレンデレンブルグ徴候）。");
+
+  // デュシェンヌ歩行（体幹側方傾斜）
+  const shoulderTilt = Math.abs(rightShoulder.y - leftShoulder.y);
+  const pelvisTilt   = Math.abs(rightHip.y - leftHip.y);
+  if (shoulderTilt > pelvisTilt + 0.03) {
+    typesTHA.push("体幹が左右に大きく傾く歩き方がみられます（デュシェンヌ歩行の傾向）。");
+  }
+
+  // 歩隔（足の左右幅）
+  const stepWidth = Math.abs(rightAnkle.x - leftAnkle.x);
+  if (stepWidth < 0.03)
+    typesTHA.push("足と足の間の幅がやや狭い傾向があります。");
+  else if (stepWidth > 0.10)
+    typesTHA.push("足と足の間の幅がやや広い傾向があります。");
+
+  // 骨盤高さの左右差（脚長差の可能性）
+  const pelvisHeightDiff = Math.abs(rightHip.y - leftHip.y);
+  if (pelvisHeightDiff > 0.03)
+    typesTHA.push("骨盤の高さに左右差がみられ、脚の長さに差がある可能性があります。");
+
+  return typesTHA;
+}
+
+/* ---------------------------------------------------------
+エクササイズ選択（カテゴリ別）
 --------------------------------------------------------- */
 function recommendExercises(pelvisR, pelvisL, abdR, abdL, addR, addL, speedPercent) {
   const ids = [];
-
   if (pelvisR > 10 || pelvisL > 10) ids.push(7, 8, 14);
-  if (abdR < 5 || abdL < 5) ids.push(12, 13, 9);
-  if (addR > 5 || addL > 5) ids.push(4, 14, 15, 13);
+  if (abdR < 5 || abdL < 5) ids.push(9);
+  if (addR > 5 || addL > 5) ids.push(4, 14, 15);
   if (speedPercent < 80) ids.push(10, 11, 16, 17);
 
   const unique = [...new Set(ids)];
@@ -476,7 +538,7 @@ function recommendExercises(pelvisR, pelvisL, abdR, abdL, addR, addL, speedPerce
 }
 
 /* ---------------------------------------------------------
-  動作解析（左右別解析）
+動作解析（左右別解析）
 --------------------------------------------------------- */
 async function analyzeVideo() {
   if (!loadedVideoURL) {
@@ -507,7 +569,6 @@ async function analyzeVideo() {
   video.setAttribute("webkit-playsinline", "");
   video.muted = true;
   video.controls = false;
-
   video.currentTime = 0;
   await video.play();
 
@@ -517,10 +578,8 @@ async function analyzeVideo() {
   // 左右別の最大値
   let maxPelvisTiltRight = 0;
   let maxPelvisTiltLeft = 0;
-
   let maxHipAbductionRight = 0;
   let maxHipAbductionLeft = 0;
-
   let maxHipAdductionRight = 0;
   let maxHipAdductionLeft = 0;
 
@@ -546,6 +605,7 @@ async function analyzeVideo() {
 
     if (result && result.landmarks && result.landmarks.length > 0) {
       const lm = result.landmarks[0];
+      lastLandmarks = lm;
 
       drawingUtils.drawLandmarks(lm, { radius: 3, color: "#ff3b30" });
       drawingUtils.drawConnectors(
@@ -572,10 +632,9 @@ async function analyzeVideo() {
 
       // 骨盤の傾き（左右）
       const pelvisTiltRight = Math.abs(rightHip.y - pelvisCenter.y);
-      const pelvisTiltLeft  = Math.abs(leftHip.y - pelvisCenter.y);
-
+      const pelvisTiltLeft = Math.abs(leftHip.y - pelvisCenter.y);
       maxPelvisTiltRight = Math.max(maxPelvisTiltRight, pelvisTiltRight);
-      maxPelvisTiltLeft  = Math.max(maxPelvisTiltLeft, pelvisTiltLeft);
+      maxPelvisTiltLeft = Math.max(maxPelvisTiltLeft, pelvisTiltLeft);
 
       // 股関節角度（右）
       const hipAngleRight = angleDeg(
@@ -608,7 +667,6 @@ async function analyzeVideo() {
       // 歩行速度（相対速度用）
       const currentTime = video.currentTime;
       const currentFootX = rightAnkle.x;
-
       if (firstFrameTime === null) {
         firstFrameTime = currentTime;
         firstFootX = currentFootX;
@@ -639,131 +697,104 @@ async function analyzeVideo() {
       const dt = lastFrameTime - firstFrameTime;
       gaitSpeedRaw = dx / dt;
     }
-
     const gaitSpeedPercent = gaitSpeedRaw * 100;
 
-    // 結果表示（左右別）
-    document.getElementById("pelvisResult").innerHTML = `
-      <strong>骨盤の傾き</strong><br>
-      右：${maxPelvisTiltRight.toFixed(1)}°<br>
-      左：${maxPelvisTiltLeft.toFixed(1)}°
-    `;
+    // 数値結果（理学療法士用）
+    const pelvisRdeg = maxPelvisTiltRight * 180;
+    const pelvisLdeg = maxPelvisTiltLeft * 180;
+    const abdRdeg = maxHipAbductionRight;
+    const abdLdeg = maxHipAbductionLeft;
+    const addRdeg = maxHipAdductionRight;
+    const addLdeg = maxHipAdductionLeft;
 
-    document.getElementById("hipAbductionResult").innerHTML = `
-      <strong>外転角度（最大）</strong><br>
-      右：${maxHipAbductionRight.toFixed(1)}°<br>
-      左：${maxHipAbductionLeft.toFixed(1)}°
-    `;
+    lastAnalysisResult = {
+      pelvisR: pelvisRdeg,
+      pelvisL: pelvisLdeg,
+      abdR: abdRdeg,
+      abdL: abdLdeg,
+      addR: addRdeg,
+      addL: addLdeg,
+      speedPercent: gaitSpeedPercent,
+      types: [],
+      conditionLabel: ""
+    };
 
-    document.getElementById("hipAdductionResult").innerHTML = `
-      <strong>内転角度（最大）</strong><br>
-      右：${maxHipAdductionRight.toFixed(1)}°<br>
-      左：${maxHipAdductionLeft.toFixed(1)}°
-    `;
+    if (userMode === "therapist") {
+      document.getElementById("resultBox").style.display = "block";
+      document.getElementById("pelvisResult").innerHTML =
+        `<strong>骨盤の傾き</strong><br>右：${pelvisRdeg.toFixed(1)} 度 / 左：${pelvisLdeg.toFixed(1)} 度`;
+      document.getElementById("hipAbductionResult").innerHTML =
+        `<strong>足が外側に動いた角度（外転）</strong><br>右：${abdRdeg.toFixed(1)} 度 / 左：${abdLdeg.toFixed(1)} 度`;
+      document.getElementById("hipAdductionResult").innerHTML =
+        `<strong>足が内側に動いた角度（内転）</strong><br>右：${addRdeg.toFixed(1)} 度 / 左：${addLdeg.toFixed(1)} 度`;
+      document.getElementById("speedResult").innerHTML =
+        `<strong>歩く速さ（相対速度）</strong><br>${gaitSpeedPercent.toFixed(1)} %`;
+    } else {
+      document.getElementById("resultBox").style.display = "none";
+    }
 
-    document.getElementById("speedResult").textContent =
-      `歩く速さ（相対速度）：${gaitSpeedPercent.toFixed(1)} %`;
-
-    // 左右バランス
-    const balanceRight = 100 - maxPelvisTiltRight;
-    const balanceLeft  = 100 - maxPelvisTiltLeft;
-
-    document.getElementById("symmetryResult").innerHTML = `
-      <strong>左右のバランス</strong><br>
-      右：${balanceRight.toFixed(1)}<br>
-      左：${balanceLeft.toFixed(1)}
-    `;
-
-    document.getElementById("resultBox").style.display = "block";
-    document.getElementById("videoStatus").textContent = "解析が完了しました。";
-
-    // 履歴保存（左右の平均値を記録）
-    const conditionLabel =
-      document.getElementById("surgeryDiffText").textContent || "条件未設定";
-
-    historyLabels.push(conditionLabel);
-    historyPelvis.push(Number(((maxPelvisTiltRight + maxPelvisTiltLeft) / 2).toFixed(1)));
-    historyHipAbd.push(Number(((maxHipAbductionRight + maxHipAbductionLeft) / 2).toFixed(1)));
-    historyHipAdd.push(Number(((maxHipAdductionRight + maxHipAdductionLeft) / 2).toFixed(1)));
-    historySpeed.push(Number(gaitSpeedPercent.toFixed(1)));
-
-    updateCompareChart();
-    saveHistory();
-
-    // 歩行タイプ診断
-    const types = diagnoseGait(
-      maxPelvisTiltRight, maxPelvisTiltLeft,
-      maxHipAbductionRight, maxHipAbductionLeft,
-      maxHipAdductionRight, maxHipAdductionLeft,
+    // 歩行タイプ診断（一般＋THA特有）
+    let types = diagnoseGait(
+      pelvisRdeg, pelvisLdeg,
+      abdRdeg, abdLdeg,
+      addRdeg, addLdeg,
       gaitSpeedPercent
     );
+    const thaTypes = diagnoseTHA(lastLandmarks);
+    types = types.concat(thaTypes);
+
+    lastAnalysisResult.types = types;
 
     document.getElementById("typeContent").innerHTML =
       `<ul>${types.map(t => `<li>${t}</li>`).join("")}</ul>`;
     document.getElementById("typeBox").style.display = "block";
 
-    // おすすめエクササイズ（カテゴリ別）
-    const recs = recommendExercises(
-      maxPelvisTiltRight, maxPelvisTiltLeft,
-      maxHipAbductionRight, maxHipAbductionLeft,
-      maxHipAdductionRight, maxHipAdductionLeft,
+    // エクササイズ推薦
+    const exercises = recommendExercises(
+      pelvisRdeg, pelvisLdeg,
+      abdRdeg, abdLdeg,
+      addRdeg, addLdeg,
       gaitSpeedPercent
     );
-
-    const exerciseContent = document.getElementById("exerciseContent");
-
-    if (recs.length === 0) {
-      exerciseContent.innerHTML =
-        "<p>大きな問題は見られませんでした。今の歩き方を続けていきましょう。</p>";
+    if (exercises.length > 0) {
+      const html = exercises.map(ex => `
+        <div style="margin-bottom:12px;">
+          <strong>${ex.category}</strong><br>
+          ${ex.name}<br>
+          <a href="${ex.url}" target="_blank" rel="noopener noreferrer">
+            <img src="${getThumbnail(ex.url)}" alt="${ex.name}" style="width:100%;border-radius:8px;margin-top:4px;">
+          </a>
+        </div>
+      `).join("");
+      document.getElementById("exerciseContent").innerHTML = html;
+      document.getElementById("exerciseBox").style.display = "block";
     } else {
-      const grouped = {};
-      recs.forEach(r => {
-        if (!grouped[r.category]) grouped[r.category] = [];
-        grouped[r.category].push(r);
-      });
-
-      exerciseContent.innerHTML = Object.keys(grouped)
-        .map(cat => `
-          <h4 style="margin-top:16px; font-weight:700;">${cat}</h4>
-          ${grouped[cat]
-            .map(
-              r => `
-            <div style="margin-bottom:16px; display:flex; gap:12px; align-items:center;">
-              <img src="${getThumbnail(r.url)}"
-                   style="width:120px; height:90px; border-radius:8px; object-fit:cover;">
-              <div>
-                <div>${r.name}</div>
-                <a class="exercise-link" href="${r.url}" target="_blank" rel="noopener noreferrer">
-                  動画を見る（YouTube）
-                </a>
-              </div>
-            </div>
-          `
-            )
-            .join("")}
-        `)
-        .join("");
+      document.getElementById("exerciseBox").style.display = "none";
     }
 
-    document.getElementById("exerciseBox").style.display = "block";
+    // 履歴保存（条件ラベルは手術日差分などから作成してもよい）
+    const label = document.getElementById("surgeryDiffText").textContent || `解析${historyLabels.length + 1}`;
+    historyLabels.push(label);
+    historyPelvis.push((pelvisRdeg + pelvisLdeg) / 2);
+    historyHipAbd.push((abdRdeg + abdLdeg) / 2);
+    historyHipAdd.push((addRdeg + addLdeg) / 2);
+    historySpeed.push(gaitSpeedPercent);
 
-    // ▼ PDF用に解析結果を保存
-    lastAnalysisResult = {
-      pelvisR: maxPelvisTiltRight,
-      pelvisL: maxPelvisTiltLeft,
-      abdR: maxHipAbductionRight,
-      abdL: maxHipAbductionLeft,
-      addR: maxHipAdductionRight,
-      addL: maxHipAdductionLeft,
-      speedPercent: gaitSpeedPercent,
-      types,
-      conditionLabel
-    };
+    const tbody = document.querySelector("#resultTable tbody");
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${label}</td>
+      <td>${((pelvisRdeg + pelvisLdeg) / 2).toFixed(1)}</td>
+      <td>${((abdRdeg + abdLdeg) / 2).toFixed(1)}</td>
+      <td>${((addRdeg + addLdeg) / 2).toFixed(1)}</td>
+      <td>${gaitSpeedPercent.toFixed(1)}</td>
+    `;
+    tbody.appendChild(row);
 
-  // ★ PDF 用：おすすめエクササイズを保存
-  lastAnalysisResult.exercises = recs;
+    updateCompareChart();
+    saveHistory();
 
-    video.controls = true;
+    document.getElementById("videoStatus").textContent = "解析が完了しました。";
     analyzeBtn.disabled = false;
   }
 
@@ -771,128 +802,47 @@ async function analyzeVideo() {
 }
 
 /* ---------------------------------------------------------
-   PDF レポート生成（添付PDFと同じ構成）
---------------------------------------------------------- */
-function generatePdfReport() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4"
-  });
-
-  // 日本語フォント（pdf-font.js を読み込んでいる前提）
-  doc.setFont("NotoSansJP");
-
-  const margin = 15;
-  let y = margin;
-
-  /* ① タイトル */
-  doc.setFontSize(22);
-  doc.text("歩行解析レポート", margin, y);
-  y += 15;
-
-  /* ② 手術前後の日数 */
-  doc.setFontSize(14);
-  doc.text(lastAnalysisResult.conditionLabel, margin, y);
-  y += 15;
-
-  /* ③ 動画の静止画 */
-  const canvas = document.getElementById("analysisCanvas");
-const imgData = canvas.toDataURL("image/png");
-
-// キャンバスの実際の縦横比
-const canvasWidth = canvas.width;
-const canvasHeight = canvas.height;
-const aspectRatio = canvasWidth / canvasHeight;
-
-// PDF に貼る最大サイズ（mm）
-const maxWidth = 180;  // 横方向の最大幅
-const maxHeight = 120; // 縦方向の最大高さ
-
-let pdfWidth = maxWidth;
-let pdfHeight = pdfWidth / aspectRatio;
-
-// 高さがオーバーする場合は高さ基準に調整
-if (pdfHeight > maxHeight) {
-    pdfHeight = maxHeight;
-    pdfWidth = pdfHeight * aspectRatio;
-}
-
-doc.setFontSize(16);
-doc.text("動画の静止画", margin, y);
-y += 8;
-
-// 縦横比を維持したまま PDF に貼り付け
-doc.addImage(imgData, "PNG", margin, y, pdfWidth, pdfHeight);
-y += pdfHeight + 10;
-
-  /* ④ 歩き方の結果（左右別） */
-  doc.setFontSize(16);
-  doc.text("① 歩き方の結果（左右別）", margin, y);
-  y += 10;
-
-  doc.setFontSize(12);
-  const resultLines = [
-    `骨盤の傾き： 右 ${lastAnalysisResult.pelvisR.toFixed(1)}° / 左 ${lastAnalysisResult.pelvisL.toFixed(1)}°`,
-    `外転角度：   右 ${lastAnalysisResult.abdR.toFixed(1)}° / 左 ${lastAnalysisResult.abdL.toFixed(1)}°`,
-    `内転角度：   右 ${lastAnalysisResult.addR.toFixed(1)}° / 左 ${lastAnalysisResult.addL.toFixed(1)}°`,
-    `歩く速さ（相対速度）： ${lastAnalysisResult.speedPercent.toFixed(1)} %`
-  ];
-
-  resultLines.forEach(line => {
-    doc.text(line, margin, y);
-    y += 7;
-  });
-
-  y += 10;
-
-  /* ⑤ あなたの歩き方の特徴 */
-  doc.setFontSize(16);
-  doc.text("② あなたの歩き方の特徴", margin, y);
-  y += 10;
-
-  doc.setFontSize(12);
-  lastAnalysisResult.types.forEach(t => {
-    const lines = doc.splitTextToSize(t, 180);
-    doc.text(lines, margin, y);
-    y += lines.length * 6;
-  });
-
-  y += 10;
-
-  /* ⑥ おすすめエクササイズ */
-  doc.setFontSize(16);
-  doc.text("③ あなたにおすすめのセルフエクササイズ", margin, y);
-  y += 10;
-
-  doc.setFontSize(12);
-  lastAnalysisResult.exercises.forEach(ex => {
-    const line = `・${ex.name}`;
-    const lines = doc.splitTextToSize(line, 180);
-    doc.text(lines, margin, y);
-    y += lines.length * 6;
-  });
-
-  /* 保存 */
-  doc.save("gait-report.pdf");
-}
-
-/* ---------------------------------------------------------
-  「動作を解析する」ボタン
+解析ボタン
 --------------------------------------------------------- */
 document.getElementById("analyzeVideoBtn").addEventListener("click", () => {
   analyzeVideo();
 });
 
 /* ---------------------------------------------------------
-  ページ読み込み時：履歴を復元
+PDFレポート作成
+--------------------------------------------------------- */
+document.getElementById("pdfReportBtn").addEventListener("click", async () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  if (typeof addJapaneseFont === "function") {
+    addJapaneseFont(doc);
+    doc.setFont("NotoSansJP", "normal");
+  }
+
+  doc.setFontSize(16);
+  doc.text("歩行解析レポート", 10, 15);
+
+  doc.setFontSize(12);
+  doc.text(`骨盤の傾き 右：${lastAnalysisResult.pelvisR.toFixed(1)} 度 / 左：${lastAnalysisResult.pelvisL.toFixed(1)} 度`, 10, 30);
+  doc.text(`外転 右：${lastAnalysisResult.abdR.toFixed(1)} 度 / 左：${lastAnalysisResult.abdL.toFixed(1)} 度`, 10, 38);
+  doc.text(`内転 右：${lastAnalysisResult.addR.toFixed(1)} 度 / 左：${lastAnalysisResult.addL.toFixed(1)} 度`, 10, 46);
+  doc.text(`歩く速さ（相対速度）：${lastAnalysisResult.speedPercent.toFixed(1)} %`, 10, 54);
+
+  doc.text("歩き方の特徴：", 10, 70);
+  let y = 78;
+  lastAnalysisResult.types.forEach((t) => {
+    const lines = doc.splitTextToSize(t, 180);
+    doc.text(lines, 10, y);
+    y += lines.length * 8;
+  });
+
+  doc.save("gait-report.pdf");
+});
+
+/* ---------------------------------------------------------
+初期化
 --------------------------------------------------------- */
 window.addEventListener("load", () => {
   loadHistory();
-});
-
-// ★ PDF ボタンのイベント
-document.getElementById("pdfReportBtn").addEventListener("click", () => {
-  generatePdfReport();
 });
