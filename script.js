@@ -3,7 +3,6 @@
 --------------------------------------------------------- */
 let poseLandmarker = null;
 let runningMode = "IMAGE";
-let liveStream = null;
 let liveAnimationId = null;
 let videoAnimationId = null;
 let compareChart = null;
@@ -14,97 +13,76 @@ const historyHipAbd = [];
 const historyHipAdd = [];
 const historySpeed = [];
 
-let previousStability = null;
-let previousSymmetry = null;
 let loadedVideoURL = null;
-
-// 録画用
-let mediaRecorder = null;
-let recordedChunks = [];
-let hasRecordedVideo = false;
-
-// 直近フレームのランドマーク（THA判定用）
 let lastLandmarks = null;
-
-// 利用者モード："none" | "patient" | "therapist"
+let lastAnalysisResult = null;
 let userMode = "none";
+
+/* 簡易エクササイズリスト（例） */
+const exerciseList = [
+  { id: 7, category: "骨盤安定", name: "中殿筋トレーニング", url: "https://www.youtube.com/watch?v=xxxx1" },
+  { id: 8, category: "体幹安定", name: "側方プランク", url: "https://www.youtube.com/watch?v=xxxx2" },
+  { id: 9, category: "外転強化", name: "立位外転エクササイズ", url: "https://www.youtube.com/watch?v=xxxx3" },
+  { id: 10, category: "歩行速度改善", name: "テンポ歩行練習", url: "https://www.youtube.com/watch?v=xxxx4" },
+  { id: 11, category: "歩行速度改善", name: "インターバル歩行", url: "https://www.youtube.com/watch?v=xxxx5" },
+  { id: 14, category: "骨盤・体幹", name: "片脚立位バランス", url: "https://www.youtube.com/watch?v=xxxx6" },
+  { id: 15, category: "内転抑制", name: "クラムシェル", url: "https://www.youtube.com/watch?v=xxxx7" },
+  { id: 16, category: "持久力", name: "連続歩行練習", url: "https://www.youtube.com/watch?v=xxxx8" },
+  { id: 17, category: "持久力", name: "階段昇降", url: "https://www.youtube.com/watch?v=xxxx9" }
+];
+
+function getThumbnail(url) {
+  return "exercise.png"; // シンプルに共通サムネイル
+}
 
 /* ---------------------------------------------------------
   スタート画面：患者様用 / 理学療法士用
 --------------------------------------------------------- */
+const startSection = document.getElementById("startSection");
+const tabBar = document.getElementById("tabBar");
+
 document.getElementById("patientModeBtn").addEventListener("click", () => {
   userMode = "patient";
+  startSection.style.display = "none";
+  tabBar.style.display = "flex";
 
-  document.getElementById("startSection").style.display = "none";
-  document.getElementById("modeSwitchWrapper").style.display = "block";
-
+  document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
   document.getElementById("videoSection").classList.add("active");
-  document.getElementById("usageSection").classList.remove("active");
-  document.getElementById("liveSection").classList.remove("active");
 
-  document.getElementById("videoModeBtn").classList.add("active");
-  document.getElementById("usageModeBtn").classList.remove("active");
-  document.getElementById("liveModeBtn").classList.remove("active");
-
-  document.getElementById("resultTable").style.display = "none";
-  document.getElementById("compareChart").style.display = "none";
-  document.getElementById("historyTitle").style.display = "none";
+  setActiveTab("videoSection");
 });
 
 document.getElementById("therapistModeBtn").addEventListener("click", () => {
   userMode = "therapist";
+  startSection.style.display = "none";
+  tabBar.style.display = "flex";
 
-  document.getElementById("startSection").style.display = "none";
-  document.getElementById("modeSwitchWrapper").style.display = "block";
-
+  document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
   document.getElementById("usageSection").classList.add("active");
-  document.getElementById("liveSection").classList.remove("active");
-  document.getElementById("videoSection").classList.remove("active");
 
-  document.getElementById("usageModeBtn").classList.add("active");
-  document.getElementById("liveModeBtn").classList.remove("active");
-  document.getElementById("videoModeBtn").classList.remove("active");
-
-  document.getElementById("resultTable").style.display = "none";
-  document.getElementById("compareChart").style.display = "none";
-  document.getElementById("historyTitle").style.display = "none";
+  setActiveTab("usageSection");
 });
 
 /* ---------------------------------------------------------
-  モード切替（使用方法・撮影補助・動作解析）
+  下タブバー切り替え
 --------------------------------------------------------- */
-document.getElementById("usageModeBtn").addEventListener("click", () => {
-  document.getElementById("usageSection").classList.add("active");
-  document.getElementById("liveSection").classList.remove("active");
-  document.getElementById("videoSection").classList.remove("active");
+function setActiveTab(targetId) {
+  document.querySelectorAll("#tabBar button").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.target === targetId);
+  });
+}
 
-  document.getElementById("usageModeBtn").classList.add("active");
-  document.getElementById("liveModeBtn").classList.remove("active");
-  document.getElementById("videoModeBtn").classList.remove("active");
-});
-
-document.getElementById("liveModeBtn").addEventListener("click", () => {
-  document.getElementById("liveSection").classList.add("active");
-  document.getElementById("usageSection").classList.remove("active");
-  document.getElementById("videoSection").classList.remove("active");
-
-  document.getElementById("liveModeBtn").classList.add("active");
-  document.getElementById("usageModeBtn").classList.remove("active");
-  document.getElementById("videoModeBtn").classList.remove("active");
-});
-
-document.getElementById("videoModeBtn").addEventListener("click", () => {
-  document.getElementById("videoSection").classList.add("active");
-  document.getElementById("usageSection").classList.remove("active");
-  document.getElementById("liveSection").classList.remove("active");
-
-  document.getElementById("videoModeBtn").classList.add("active");
-  document.getElementById("usageModeBtn").classList.remove("active");
-  document.getElementById("liveModeBtn").classList.remove("active");
+document.querySelectorAll("#tabBar button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.target;
+    document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
+    document.getElementById(target).classList.add("active");
+    setActiveTab(target);
+  });
 });
 
 /* ---------------------------------------------------------
-  撮影補助：チェックリスト → 全チェックで撮影開始
+  撮影補助：チェックリスト → 全チェックでカメラ起動ボタン有効
 --------------------------------------------------------- */
 const liveChecks = document.querySelectorAll(".live-check");
 const startLiveBtn = document.getElementById("startLiveBtn");
@@ -119,62 +97,40 @@ liveChecks.forEach(ch => {
 });
 
 /* ---------------------------------------------------------
-  撮影補助モード（チェックマーク復元）
+  撮影補助モード：外側カメラ起動（スマホ最適化）
 --------------------------------------------------------- */
 document.getElementById("startLiveBtn").addEventListener("click", async () => {
   const video = document.getElementById("liveVideo");
-  const canvas = document.getElementById("liveCanvas");
-  const ctx = canvas.getContext("2d");
 
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: { exact: "environment" },
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    }
+  });
+
   video.srcObject = stream;
   await video.play();
-
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  const drawCheckmark = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = "#34c759";
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(canvas.width * 0.3, canvas.height * 0.5);
-    ctx.lineTo(canvas.width * 0.45, canvas.height * 0.65);
-    ctx.lineTo(canvas.width * 0.7, canvas.height * 0.35);
-    ctx.stroke();
-
-    liveAnimationId = requestAnimationFrame(drawCheckmark);
-  };
-
-  drawCheckmark();
 });
 
 document.getElementById("stopLiveBtn").addEventListener("click", () => {
-  if (liveAnimationId) cancelAnimationFrame(liveAnimationId);
-
   const video = document.getElementById("liveVideo");
   const stream = video.srcObject;
   if (stream) {
-    stream.getTracks().forEach((track) => track.stop());
+    stream.getTracks().forEach(track => track.stop());
   }
   video.srcObject = null;
-
-  const canvas = document.getElementById("liveCanvas");
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
 });
 
 /* ---------------------------------------------------------
-  動画読み込み（スマホ最適化）
+  動画読み込み（解析用）
 --------------------------------------------------------- */
 document.getElementById("videoFileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
   loadedVideoURL = URL.createObjectURL(file);
-  hasRecordedVideo = false;
 
   const video = document.getElementById("analysisVideo");
   video.setAttribute("playsinline", "");
@@ -397,21 +353,6 @@ document.getElementById("analyzeVideoBtn").addEventListener("click", async () =>
       conditionLabel: ""
     };
 
-    /* -------------------------------
-       患者様用 / PT用の分岐
-    -------------------------------- */
-    if (userMode === "therapist") {
-      document.getElementById("resultBox").style.display = "block";
-      document.getElementById("historyTitle").style.display = "block";
-      document.getElementById("resultTable").style.display = "table";
-      document.getElementById("compareChart").style.display = "block";
-    } else {
-      document.getElementById("resultBox").style.display = "block";
-      document.getElementById("historyTitle").style.display = "block";
-      document.getElementById("resultTable").style.display = "table";
-      document.getElementById("compareChart").style.display = "none";
-    }
-
     document.getElementById("videoStatus").textContent = "解析が完了しました。";
     analyzeBtn.disabled = false;
 
@@ -467,7 +408,6 @@ function diagnoseTHA(landmarks, expert = false) {
   const rightShoulder = landmarks[12];
   const leftShoulder  = landmarks[11];
 
-  // トレンデレンブルグ徴候
   const pelvisDropRight = leftHip.y - rightHip.y;
   const pelvisDropLeft  = rightHip.y - leftHip.y;
 
@@ -486,7 +426,6 @@ function diagnoseTHA(landmarks, expert = false) {
     );
   }
 
-  // デュシェンヌ歩行
   const shoulderTilt = Math.abs(rightShoulder.y - leftShoulder.y);
   const pelvisTilt   = Math.abs(rightHip.y - leftHip.y);
   if (shoulderTilt > pelvisTilt + 0.03) {
@@ -497,7 +436,6 @@ function diagnoseTHA(landmarks, expert = false) {
     );
   }
 
-  // 歩隔
   const stepWidth = Math.abs(rightAnkle.x - leftAnkle.x);
   if (stepWidth < 0.03)
     typesTHA.push(expert ? "歩隔が狭い傾向があります。" : "足と足の間の幅が狭い傾向があります。");
@@ -559,30 +497,32 @@ function setColoredValue(id, value, type) {
 }
 
 /* ---------------------------------------------------------
-  解析後の表示処理（特徴・エクササイズ・履歴）
+  解析後の表示処理
 --------------------------------------------------------- */
 function finalizeAnalysis() {
   const r = lastAnalysisResult;
+  if (!r) return;
 
-  /* -------------------------------
-     ① 歩き方の結果（左右別）
-  -------------------------------- */
-  setColoredValue("pelvisRCell", r.pelvisR, "pelvis");
-  setColoredValue("pelvisLCell", r.pelvisL, "pelvis");
-  setColoredValue("abdRCell", r.abdR, "abd");
-  setColoredValue("abdLCell", r.abdL, "abd");
-  setColoredValue("addRCell", r.addR, "add");
-  setColoredValue("addLCell", r.addL, "add");
+  /* 左右別（PT用のみ） */
+  if (userMode === "therapist") {
+    document.getElementById("resultBox").style.display = "block";
+    setColoredValue("pelvisRCell", r.pelvisR, "pelvis");
+    setColoredValue("pelvisLCell", r.pelvisL, "pelvis");
+    setColoredValue("abdRCell", r.abdR, "abd");
+    setColoredValue("abdLCell", r.abdL, "abd");
+    setColoredValue("addRCell", r.addR, "add");
+    setColoredValue("addLCell", r.addL, "add");
 
-  const speedCell = document.getElementById("speedCell");
-  speedCell.textContent = r.speedPercent.toFixed(1);
-  const speedStatus = colorizeResult(r.speedPercent, "speed");
-  speedCell.classList.remove("result-normal", "result-warning", "result-danger");
-  speedCell.classList.add(`result-${speedStatus}`);
+    const speedCell = document.getElementById("speedCell");
+    speedCell.textContent = r.speedPercent.toFixed(1);
+    const speedStatus = colorizeResult(r.speedPercent, "speed");
+    speedCell.classList.remove("result-normal", "result-warning", "result-danger");
+    speedCell.classList.add(`result-${speedStatus}`);
+  } else {
+    document.getElementById("resultBox").style.display = "none";
+  }
 
-  /* -------------------------------
-     ② 特徴（一般＋THA）
-  -------------------------------- */
+  /* 特徴（一般＋THA） */
   let types = diagnoseGait(
     r.pelvisR, r.pelvisL,
     r.abdR, r.abdL,
@@ -591,17 +531,21 @@ function finalizeAnalysis() {
   );
   const thaTypes = diagnoseTHA(lastLandmarks, userMode === "therapist");
   types = types.concat(thaTypes);
-
   r.types = types;
 
-  document.getElementById("typeBox").style.display = "block";
-  document.getElementById("typeBox").innerHTML =
-    `<h3>${userMode === "therapist" ? "② 歩き方の特徴（専門的）" : "① あなたの歩行の特徴"}</h3>
-     <ul>${types.map(t => `<li>${t}</li>`).join("")}</ul>`;
+  const typeBox = document.getElementById("typeBox");
+  typeBox.style.display = "block";
+  if (userMode === "therapist") {
+    typeBox.innerHTML =
+      `<h3>② 歩き方の特徴（専門的）</h3>
+       <ul>${types.map(t => `<li>${t}</li>`).join("")}</ul>`;
+  } else {
+    typeBox.innerHTML =
+      `<h3>① あなたの歩行の特徴</h3>
+       <ul>${types.map(t => `<li>${t}</li>`).join("")}</ul>`;
+  }
 
-  /* -------------------------------
-     ③ エクササイズ推薦
-  -------------------------------- */
+  /* エクササイズ推薦 */
   const exercises = recommendExercises(
     r.pelvisR, r.pelvisL,
     r.abdR, r.abdL,
@@ -609,39 +553,40 @@ function finalizeAnalysis() {
     r.speedPercent
   );
 
+  const exerciseBox = document.getElementById("exerciseBox");
   if (exercises.length > 0) {
-    document.getElementById("exerciseBox").style.display = "block";
-    document.getElementById("exerciseBox").innerHTML =
-      `<h3>${userMode === "therapist"
-          ? "③ おすすめのセルフエクササイズ"
-          : "② あなたにおすすめのセルフエクササイズ"
-        }</h3>
-       ${exercises.map(ex => `
-         <div style="margin-bottom:12px;">
-           <strong>${ex.category}</strong><br>
-           ${ex.name}<br>
-           <a href="${ex.url}" target="_blank" rel="noopener noreferrer">
-             <img src="${getThumbnail(ex.url)}" style="width:100%;border-radius:8px;margin-top:4px;">
-           </a>
-         </div>
-       `).join("")}`;
+    exerciseBox.style.display = "block";
+    const exerciseHTML = exercises.map(ex => `
+      <div style="margin-bottom:12px;">
+        <strong>${ex.category}</strong><br>
+        ${ex.name}<br>
+        <a href="${ex.url}" target="_blank" rel="noopener noreferrer">
+          <img src="${getThumbnail(ex.url)}" style="width:100%;border-radius:8px;margin-top:4px;">
+        </a>
+      </div>
+    `).join("");
+
+    if (userMode === "therapist") {
+      exerciseBox.innerHTML =
+        `<h3>④ あなたにおすすめのセルフエクササイズ</h3>${exerciseHTML}`;
+    } else {
+      exerciseBox.innerHTML =
+        `<h3>③ あなたにおすすめのセルフエクササイズ</h3>${exerciseHTML}`;
+    }
+  } else {
+    exerciseBox.style.display = "none";
   }
 
-  /* -------------------------------
-     ④ 履歴保存
-  -------------------------------- */
+  /* 履歴保存 */
   const label = document.getElementById("surgeryDiffText").textContent || `解析${historyLabels.length + 1}`;
   historyLabels.push(label);
   historyPelvis.push((r.pelvisR + r.pelvisL) / 2);
   historyHipAbd.push((r.abdR + r.abdL) / 2);
   historyHipAdd.push((r.addR + r.addL) / 2);
   historySpeed.push(r.speedPercent);
-
   saveHistory();
 
-  /* -------------------------------
-     表の更新
-  -------------------------------- */
+  /* 表更新 */
   const tbody = document.querySelector("#resultTable tbody");
   const row = document.createElement("tr");
   row.innerHTML = `
@@ -653,10 +598,11 @@ function finalizeAnalysis() {
   `;
   tbody.appendChild(row);
 
-  /* -------------------------------
-     グラフ更新（PTのみ）
-  -------------------------------- */
-  if (userMode === "therapist") updateCompareChart();
+  document.getElementById("historyCard").style.display = "block";
+
+  /* グラフ表示（患者様・PTともに表示） */
+  document.getElementById("graphCard").style.display = "block";
+  updateCompareChart();
 }
 
 /* ---------------------------------------------------------
@@ -720,6 +666,8 @@ function updateCompareChart() {
   PDFレポート作成
 --------------------------------------------------------- */
 document.getElementById("pdfReportBtn").addEventListener("click", async () => {
+  if (!lastAnalysisResult) return;
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
@@ -753,18 +701,16 @@ document.getElementById("pdfReportBtn").addEventListener("click", async () => {
     y += lines.length * 7;
   });
 
-  if (userMode === "therapist") {
-    const chartCanvas = document.getElementById("compareChart");
-    if (chartCanvas) {
-      const imgData = chartCanvas.toDataURL("image/png");
-      y += 10;
-      if (y > 200) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.text("回復の変化（グラフ）", 10, y); y += 6;
-      doc.addImage(imgData, "PNG", 10, y, 180, 80);
+  const chartCanvas = document.getElementById("compareChart");
+  if (chartCanvas) {
+    const imgData = chartCanvas.toDataURL("image/png");
+    y += 10;
+    if (y > 200) {
+      doc.addPage();
+      y = 20;
     }
+    doc.text("回復の変化（グラフ）", 10, y); y += 6;
+    doc.addImage(imgData, "PNG", 10, y, 180, 80);
   }
 
   doc.save("gait-report.pdf");
