@@ -39,7 +39,6 @@
     window.DrawingUtils = DrawingUtils;
   </script>
 
-  <!-- CSS -->
   <style>
     body {
       margin: 0;
@@ -51,13 +50,16 @@
 
     header {
       text-align: center;
-      padding: 20px 10px;
+      padding: 16px 10px;
       background: white;
       border-bottom: 1px solid #e5e5ea;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     .title {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 700;
       color: #111;
     }
@@ -65,17 +67,17 @@
     .container {
       width: 100%;
       max-width: 480px;
-      margin: auto;
-      padding: 14px;
+      margin: 0 auto;
+      padding: 12px;
+      padding-bottom: 80px; /* タブバー分 */
     }
 
-    /* スタート画面カード（中央揃え・スマホ最適化） */
     .start-card {
-      max-width: 320px;
-      margin: 0 auto 20px auto;
+      max-width: 340px;
+      margin: 0 auto 16px auto;
       background: linear-gradient(135deg, #7dd3fc, #38bdf8);
       border-radius: 18px;
-      padding: 22px;
+      padding: 20px;
       box-shadow: 0 8px 18px rgba(56, 189, 248, 0.5);
       cursor: pointer;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -96,68 +98,33 @@
     }
 
     .start-icon {
-      font-size: 40px;
-      width: 56px;
-      height: 56px;
+      font-size: 32px;
+      width: 52px;
+      height: 52px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.9);
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
     .start-title {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
       margin-bottom: 4px;
-    }
-
-    /* モード切替ボタン（大きく目立たせる） */
-    .mode-button {
-      font-size: 16px;
-      font-weight: 700;
-      padding: 14px 18px;
-      margin: 6px;
-      border-radius: 12px;
-      background: #007aff;
-      color: white;
-      border: none;
-      width: 100%;
-      box-shadow: 0 4px 10px rgba(0,122,255,0.3);
-    }
-
-    .mode-button.active {
-      background: #005fcc;
     }
 
     .section { display: none; }
     .section.active { display: block; }
 
     .card {
-      background: white;
-      padding: 16px;
-      border-radius: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 18px;
       margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     }
 
-    /* 動画サイズ（スマホ最適化） */
-    #analysisVideo, #analysisCanvas {
-      width: 100%;
-      max-width: 360px;
-      height: auto;
-      margin: 0 auto;
-      display: block;
-    }
-
-    /* イラスト */
-    .illustration-icon {
-      width: 40px;
-      height: 40px;
-      object-fit: contain;
-    }
-
-    /* 表 */
     .ios-table {
       width: 100%;
       border-collapse: collapse;
@@ -167,12 +134,82 @@
       padding: 10px;
       border-bottom: 1px solid #e5e5ea;
       text-align: left;
+      font-size: 13px;
     }
 
-    /* 色分け */
+    #analysisVideo, #analysisCanvas {
+      width: 100%;
+      max-width: 360px;
+      height: auto;
+      margin: 0 auto;
+      display: block;
+      border-radius: 12px;
+    }
+
+    #liveVideo {
+      width: 100%;
+      height: auto;
+      max-height: 70vh;
+      object-fit: cover;
+      border-radius: 12px;
+      background: #000;
+    }
+
+    .mode-button {
+      font-size: 15px;
+      font-weight: 700;
+      padding: 12px 16px;
+      margin-top: 10px;
+      border-radius: 12px;
+      background: #007aff;
+      color: white;
+      border: none;
+      width: 100%;
+      box-shadow: 0 4px 10px rgba(0,122,255,0.3);
+    }
+
+    .mode-button:disabled {
+      opacity: 0.4;
+      box-shadow: none;
+    }
+
     .result-normal { color: #007aff; font-weight: 700; }
     .result-warning { color: #ff9500; font-weight: 700; }
     .result-danger { color: #ff3b30; font-weight: 700; }
+
+    #tabBar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      background: #ffffff;
+      border-top: 1px solid #e5e5ea;
+      display: none; /* スタート画面後に表示 */
+      justify-content: space-around;
+      align-items: center;
+      z-index: 999;
+    }
+
+    #tabBar button {
+      background: none;
+      border: none;
+      font-size: 13px;
+      color: #8e8e93;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    #tabBar button.active {
+      color: #007aff;
+    }
+
+    #tabBar button span.icon {
+      font-size: 18px;
+    }
   </style>
 </head>
 
@@ -189,7 +226,7 @@
       <div class="start-icon">👤</div>
       <div>
         <div class="start-title">患者様用</div>
-        <div>歩行スコア・特徴・エクササイズ</div>
+        <div>歩行の特徴・グラフ・エクササイズ</div>
       </div>
     </div>
 
@@ -197,25 +234,18 @@
       <div class="start-icon">🩺</div>
       <div>
         <div class="start-title">理学療法士用</div>
-        <div>左右別解析・THA代償</div>
+        <div>左右別解析・特徴・グラフ</div>
       </div>
     </div>
   </section>
 
-  <!-- モード切替 -->
-  <div id="modeSwitchWrapper" style="display:none;">
-    <button id="usageModeBtn" class="mode-button active">📘 アプリの使用方法</button>
-    <button id="liveModeBtn" class="mode-button">📸 撮影補助</button>
-    <button id="videoModeBtn" class="mode-button">🎥 動作解析</button>
-  </div>
-
-  <!-- 使用方法（撮影ガイド反映） -->
+  <!-- 使用方法 -->
   <section id="usageSection" class="section">
     <div class="card">
       <h2>📘 アプリの使用方法</h2>
 
       <h3>🎯 目的</h3>
-      <p>このアプリは、歩行動画をもとに骨盤の傾きや股関節の動き、左右差、歩行速度の指標を推定し、経時的な変化をわかりやすく確認するためのツールです。</p>
+      <p>このアプリは、歩行動画をもとに骨盤の傾きや股関節の動き、左右差、歩行速度の指標を推定し、経時的な変化をわかりやすく確認するためのツールです。診断目的ではなく、「変化の見える化」を目的としています。</p>
 
       <h3>1. 撮影環境の準備</h3>
       <ul>
@@ -234,9 +264,9 @@
 
       <h3>3. 被写体（患者様）への説明</h3>
       <ul>
-        <li>膝・股関節の動きが見える服装</li>
-        <li>普段どおりの自然な歩行</li>
-        <li>カメラを意識しすぎないように説明</li>
+        <li>膝・股関節の動きが見える服装（スカートや長いコートは避ける）</li>
+        <li>普段どおりの自然な歩行（速すぎる／遅すぎる歩行は避ける）</li>
+        <li>カメラを意識しすぎないように事前に説明する</li>
       </ul>
 
       <h3>4. 撮影手順</h3>
@@ -245,23 +275,22 @@
         <li>歩行路の端に立つ</li>
         <li>歩き始めたら録画開始</li>
         <li>歩行の中央〜終わりまでを撮影</li>
-        <li>アプリの「動作解析モード」で動画を選択</li>
+        <li>アプリの「解析」タブで動画を選択し解析を開始</li>
       </ol>
 
       <h3>5. 解析結果の注意点</h3>
       <ul>
         <li>本アプリは診断目的ではありません</li>
         <li>動画から推定した相対的な指標です</li>
-        <li>経時的な変化の把握に最適です</li>
+        <li>経時的な変化の把握に適しています</li>
       </ul>
     </div>
   </section>
 
-  <!-- 撮影補助（チェックリスト） -->
+  <!-- 撮影補助 -->
   <section id="liveSection" class="section">
     <div class="card">
       <h2>📸 撮影補助モード</h2>
-
       <p>以下の条件をすべて確認してから撮影を開始してください。</p>
 
       <div style="margin-bottom:10px;">
@@ -272,10 +301,14 @@
       </div>
 
       <video id="liveVideo" playsinline muted></video>
-      <canvas id="liveCanvas"></canvas>
 
-      <button id="startLiveBtn" class="mode-button" disabled>撮影開始</button>
+      <button id="startLiveBtn" class="mode-button" disabled>カメラを起動</button>
       <button id="stopLiveBtn" class="mode-button" style="background:#ff3b30;">カメラ停止</button>
+    </div>
+
+    <div class="card">
+      <h3>📹 撮影の参考（骨格モデル）</h3>
+      <video id="sampleSkeletonVideo" src="skeleton-walk.mp4" controls playsinline muted style="width:100%; border-radius:12px;"></video>
     </div>
   </section>
 
@@ -294,30 +327,38 @@
       <video id="analysisVideo" controls playsinline muted></video>
       <canvas id="analysisCanvas"></canvas>
 
-      <div id="videoStatus"></div>
+      <div id="videoStatus" style="margin-top:8px;"></div>
       <div id="videoError" style="color:red;"></div>
+    </div>
 
-      <!-- ① 歩き方の結果（左右別） -->
-      <div id="resultBox" class="card" style="display:none;">
-        <h3>① 歩き方の結果（左右別）</h3>
-        <table class="ios-table">
-          <tr><th>項目</th><th>右</th><th>左</th></tr>
-          <tr><td>骨盤の傾き（°）</td><td id="pelvisRCell" class="result-cell"></td><td id="pelvisLCell" class="result-cell"></td></tr>
-          <tr><td>外転（°）</td><td id="abdRCell" class="result-cell"></td><td id="abdLCell" class="result-cell"></td></tr>
-          <tr><td>内転（°）</td><td id="addRCell" class="result-cell"></td><td id="addLCell" class="result-cell"></td></tr>
-          <tr><td>歩行速度（%）</td><td colspan="2" id="speedCell" class="result-cell" style="text-align:center;"></td></tr>
-        </table>
-      </div>
+    <!-- PT用：① 歩き方の結果（左右別） -->
+    <div id="resultBox" class="card" style="display:none;">
+      <h3>① 歩き方の結果（左右別）</h3>
+      <table class="ios-table">
+        <tr><th>項目</th><th>右</th><th>左</th></tr>
+        <tr><td>骨盤の傾き（°）</td><td id="pelvisRCell" class="result-cell"></td><td id="pelvisLCell" class="result-cell"></td></tr>
+        <tr><td>外転（°）</td><td id="abdRCell" class="result-cell"></td><td id="abdLCell" class="result-cell"></td></tr>
+        <tr><td>内転（°）</td><td id="addRCell" class="result-cell"></td><td id="addLCell" class="result-cell"></td></tr>
+        <tr><td>歩行速度（%）</td><td colspan="2" id="speedCell" class="result-cell" style="text-align:center;"></td></tr>
+      </table>
+    </div>
 
-      <!-- ② 特徴（患者様用 / PT用） -->
-      <div id="typeBox" class="card" style="display:none;"></div>
+    <!-- 特徴 -->
+    <div id="typeBox" class="card" style="display:none;"></div>
 
-      <!-- ③ エクササイズ -->
-      <div id="exerciseBox" class="card" style="display:none;"></div>
+    <!-- グラフ -->
+    <div id="graphCard" class="card" style="display:none;">
+      <h3>回復の変化を比べる（グラフ）</h3>
+      <canvas id="compareChart"></canvas>
+    </div>
 
-      <!-- ④ 回復の変化（表） -->
-      <h3 id="historyTitle" style="margin-top:20px; display:none;">回復の変化を比べる</h3>
-      <table id="resultTable" class="ios-table" style="display:none;">
+    <!-- エクササイズ -->
+    <div id="exerciseBox" class="card" style="display:none;"></div>
+
+    <!-- 表（履歴） -->
+    <div class="card" id="historyCard" style="display:none;">
+      <h3>回復の変化を比べる（表）</h3>
+      <table id="resultTable" class="ios-table">
         <thead>
           <tr>
             <th>条件</th>
@@ -329,10 +370,23 @@
         </thead>
         <tbody></tbody>
       </table>
+    </div>
 
-      <canvas id="compareChart" style="margin-top:16px; display:none;"></canvas>
-
-</div>
+<!-- 下タブバー -->
+<nav id="tabBar">
+  <button data-target="usageSection" class="active">
+    <span class="icon">📘</span>
+    <span>使用方法</span>
+  </button>
+  <button data-target="liveSection">
+    <span class="icon">📸</span>
+    <span>撮影</span>
+  </button>
+  <button data-target="videoSection">
+    <span class="icon">🎥</span>
+    <span>解析</span>
+  </button>
+</nav>
 
 <script src="script.js"></script>
 </body>
