@@ -5,6 +5,8 @@ const ASSETS = [
   "./script.js",
   "./manifest.json",
   "./pdf-font.js",
+  "./icon-192.png",
+  "./icon-512.png",
   "https://cdn.jsdelivr.net/npm/chart.js",
   "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0"
