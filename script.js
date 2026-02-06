@@ -73,7 +73,7 @@ function getThumbnail(url) {
 }
 
 /* ---------------------------------------------------------
-履歴の保存・読み込み
+履歴の保存・読み込み（PT用）
 --------------------------------------------------------- */
 function saveHistory() {
   const data = {
@@ -182,14 +182,21 @@ document.getElementById("patientModeBtn").addEventListener("click", () => {
   document.getElementById("startSection").classList.remove("active");
   document.getElementById("startSection").style.display = "none";
 
+  // 患者様用：モード切替は表示するが、数値系は後で非表示制御
   document.getElementById("modeSwitchWrapper").style.display = "block";
-  document.getElementById("usageSection").classList.add("active");
-  document.getElementById("liveSection").classList.remove("active");
-  document.getElementById("videoSection").classList.remove("active");
 
-  document.getElementById("usageModeBtn").classList.add("active");
+  // デフォルトは動作解析タブを表示（患者様は解析をメインに）
+  document.getElementById("videoSection").classList.add("active");
+  document.getElementById("usageSection").classList.remove("active");
+  document.getElementById("liveSection").classList.remove("active");
+
+  document.getElementById("videoModeBtn").classList.add("active");
+  document.getElementById("usageModeBtn").classList.remove("active");
   document.getElementById("liveModeBtn").classList.remove("active");
-  document.getElementById("videoModeBtn").classList.remove("active");
+
+  // 患者様用では履歴テーブルとグラフは初期状態で非表示
+  document.getElementById("resultTable").style.display = "none";
+  document.getElementById("compareChart").style.display = "none";
 });
 
 document.getElementById("therapistModeBtn").addEventListener("click", () => {
@@ -205,6 +212,10 @@ document.getElementById("therapistModeBtn").addEventListener("click", () => {
   document.getElementById("usageModeBtn").classList.add("active");
   document.getElementById("liveModeBtn").classList.remove("active");
   document.getElementById("videoModeBtn").classList.remove("active");
+
+  // PT用では履歴テーブルとグラフを活用
+  document.getElementById("resultTable").style.display = "table";
+  document.getElementById("compareChart").style.display = "block";
 });
 
 /* ---------------------------------------------------------
@@ -482,7 +493,7 @@ function diagnoseGait(pelvisR, pelvisL, abdR, abdL, addR, addL, speedPercent) {
 /* ---------------------------------------------------------
 THA特有の代償動作の診断
 --------------------------------------------------------- */
-function diagnoseTHA(landmarks) {
+function diagnoseTHA(landmarks, expert = false) {
   const typesTHA = [];
   if (!landmarks || landmarks.length < 29) return typesTHA;
 
@@ -493,32 +504,58 @@ function diagnoseTHA(landmarks) {
   const rightShoulder = landmarks[12];
   const leftShoulder  = landmarks[11];
 
-  // トレンデレンブルグ徴候（立脚側で対側骨盤が下がる）
+  // トレンデレンブルグ徴候
   const pelvisDropRight = leftHip.y - rightHip.y; // 右立脚時
   const pelvisDropLeft  = rightHip.y - leftHip.y; // 左立脚時
-  if (pelvisDropRight > 0.03)
-    typesTHA.push("右脚で立っているときに、反対側の骨盤が下がりやすい傾向があります（トレンデレンブルグ徴候）。");
-  if (pelvisDropLeft > 0.03)
-    typesTHA.push("左脚で立っているときに、反対側の骨盤が下がりやすい傾向があります（トレンデレンブルグ徴候）。");
+  if (pelvisDropRight > 0.03) {
+    typesTHA.push(
+      expert
+        ? "右立脚時に対側骨盤の下制がみられ、中殿筋機能不全を示唆するトレンデレンブルグ徴候の傾向があります。"
+        : "右脚で立っているときに、反対側の骨盤が下がりやすい傾向があります（トレンデレンブルグ徴候）。"
+    );
+  }
+  if (pelvisDropLeft > 0.03) {
+    typesTHA.push(
+      expert
+        ? "左立脚時に対側骨盤の下制がみられ、中殿筋機能不全を示唆するトレンデレンブルグ徴候の傾向があります。"
+        : "左脚で立っているときに、反対側の骨盤が下がりやすい傾向があります（トレンデレンブルグ徴候）。"
+    );
+  }
 
   // デュシェンヌ歩行（体幹側方傾斜）
   const shoulderTilt = Math.abs(rightShoulder.y - leftShoulder.y);
   const pelvisTilt   = Math.abs(rightHip.y - leftHip.y);
   if (shoulderTilt > pelvisTilt + 0.03) {
-    typesTHA.push("体幹が左右に大きく傾く歩き方がみられます（デュシェンヌ歩行の傾向）。");
+    typesTHA.push(
+      expert
+        ? "立脚側への体幹側方傾斜が骨盤傾斜よりも大きく、デュシェンヌ歩行様の代償がみられます。"
+        : "体が左右に大きく傾く歩き方がみられます（デュシェンヌ歩行の傾向）。"
+    );
   }
 
   // 歩隔（足の左右幅）
   const stepWidth = Math.abs(rightAnkle.x - leftAnkle.x);
   if (stepWidth < 0.03)
-    typesTHA.push("足と足の間の幅がやや狭い傾向があります。");
+    typesTHA.push(
+      expert
+        ? "歩隔がやや狭く、バランス戦略として内側寄りの足位置を選択している可能性があります。"
+        : "足と足の間の幅がやや狭い傾向があります。"
+    );
   else if (stepWidth > 0.10)
-    typesTHA.push("足と足の間の幅がやや広い傾向があります。");
+    typesTHA.push(
+      expert
+        ? "歩隔がやや広く、安定性を高めるために足幅を広げている可能性があります。"
+        : "足と足の間の幅がやや広い傾向があります。"
+    );
 
   // 骨盤高さの左右差（脚長差の可能性）
   const pelvisHeightDiff = Math.abs(rightHip.y - leftHip.y);
   if (pelvisHeightDiff > 0.03)
-    typesTHA.push("骨盤の高さに左右差がみられ、脚の長さに差がある可能性があります。");
+    typesTHA.push(
+      expert
+        ? "骨盤の高さに左右差がみられ、機能的または構造的な脚長差の存在が疑われます。"
+        : "骨盤の高さに左右差がみられ、脚の長さに差がある可能性があります。"
+    );
 
   return typesTHA;
 }
@@ -699,7 +736,7 @@ async function analyzeVideo() {
     }
     const gaitSpeedPercent = gaitSpeedRaw * 100;
 
-    // 数値結果（理学療法士用）
+    // 数値結果（PT用のみ表示）
     const pelvisRdeg = maxPelvisTiltRight * 180;
     const pelvisLdeg = maxPelvisTiltLeft * 180;
     const abdRdeg = maxHipAbductionRight;
@@ -730,6 +767,7 @@ async function analyzeVideo() {
       document.getElementById("speedResult").innerHTML =
         `<strong>歩く速さ（相対速度）</strong><br>${gaitSpeedPercent.toFixed(1)} %`;
     } else {
+      // 患者様用：数値は非表示
       document.getElementById("resultBox").style.display = "none";
     }
 
@@ -740,7 +778,7 @@ async function analyzeVideo() {
       addRdeg, addLdeg,
       gaitSpeedPercent
     );
-    const thaTypes = diagnoseTHA(lastLandmarks);
+    const thaTypes = diagnoseTHA(lastLandmarks, userMode === "therapist");
     types = types.concat(thaTypes);
 
     lastAnalysisResult.types = types;
@@ -772,7 +810,7 @@ async function analyzeVideo() {
       document.getElementById("exerciseBox").style.display = "none";
     }
 
-    // 履歴保存（条件ラベルは手術日差分などから作成してもよい）
+    // 履歴保存（PT用のみ活用）
     const label = document.getElementById("surgeryDiffText").textContent || `解析${historyLabels.length + 1}`;
     historyLabels.push(label);
     historyPelvis.push((pelvisRdeg + pelvisLdeg) / 2);
@@ -791,8 +829,16 @@ async function analyzeVideo() {
     `;
     tbody.appendChild(row);
 
-    updateCompareChart();
-    saveHistory();
+    if (userMode === "therapist") {
+      updateCompareChart();
+      saveHistory();
+      document.getElementById("resultTable").style.display = "table";
+      document.getElementById("compareChart").style.display = "block";
+    } else {
+      // 患者様用：履歴・グラフは非表示のまま
+      document.getElementById("resultTable").style.display = "none";
+      document.getElementById("compareChart").style.display = "none";
+    }
 
     document.getElementById("videoStatus").textContent = "解析が完了しました。";
     analyzeBtn.disabled = false;
@@ -809,7 +855,7 @@ document.getElementById("analyzeVideoBtn").addEventListener("click", () => {
 });
 
 /* ---------------------------------------------------------
-PDFレポート作成
+PDFレポート作成（患者様：簡易版 / PT：詳細版）
 --------------------------------------------------------- */
 document.getElementById("pdfReportBtn").addEventListener("click", async () => {
   const { jsPDF } = window.jspdf;
@@ -824,13 +870,21 @@ document.getElementById("pdfReportBtn").addEventListener("click", async () => {
   doc.text("歩行解析レポート", 10, 15);
 
   doc.setFontSize(12);
-  doc.text(`骨盤の傾き 右：${lastAnalysisResult.pelvisR.toFixed(1)} 度 / 左：${lastAnalysisResult.pelvisL.toFixed(1)} 度`, 10, 30);
-  doc.text(`外転 右：${lastAnalysisResult.abdR.toFixed(1)} 度 / 左：${lastAnalysisResult.abdL.toFixed(1)} 度`, 10, 38);
-  doc.text(`内転 右：${lastAnalysisResult.addR.toFixed(1)} 度 / 左：${lastAnalysisResult.addL.toFixed(1)} 度`, 10, 46);
-  doc.text(`歩く速さ（相対速度）：${lastAnalysisResult.speedPercent.toFixed(1)} %`, 10, 54);
 
-  doc.text("歩き方の特徴：", 10, 70);
-  let y = 78;
+  if (userMode === "therapist") {
+    // 詳細版（PT用）
+    doc.text(`骨盤の傾き 右：${lastAnalysisResult.pelvisR.toFixed(1)} 度 / 左：${lastAnalysisResult.pelvisL.toFixed(1)} 度`, 10, 30);
+    doc.text(`外転 右：${lastAnalysisResult.abdR.toFixed(1)} 度 / 左：${lastAnalysisResult.abdL.toFixed(1)} 度`, 10, 38);
+    doc.text(`内転 右：${lastAnalysisResult.addR.toFixed(1)} 度 / 左：${lastAnalysisResult.addL.toFixed(1)} 度`, 10, 46);
+    doc.text(`歩く速さ（相対速度）：${lastAnalysisResult.speedPercent.toFixed(1)} %`, 10, 54);
+
+    doc.text("歩き方の特徴・THA特有の代償：", 10, 70);
+  } else {
+    // 簡易版（患者様用）
+    doc.text("歩き方の特徴：", 10, 30);
+  }
+
+  let y = userMode === "therapist" ? 78 : 38;
   lastAnalysisResult.types.forEach((t) => {
     const lines = doc.splitTextToSize(t, 180);
     doc.text(lines, 10, y);
