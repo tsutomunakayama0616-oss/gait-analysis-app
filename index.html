@@ -177,6 +177,7 @@
     .result-warning { color: #ff9500; font-weight: 700; }
     .result-danger { color: #ff3b30; font-weight: 700; }
 
+    /* ★ スタート画面中は非表示、開始後は表示 */
     #tabBar {
       position: fixed;
       bottom: 0;
@@ -185,7 +186,7 @@
       height: 60px;
       background: #ffffff;
       border-top: 1px solid #e5e5ea;
-      display: flex; /* ← 常時表示 */
+      display: none; /* ← ここ重要 */
       justify-content: space-around;
       align-items: center;
       z-index: 999;
@@ -367,7 +368,7 @@
       </table>
     </div>
 
-<!-- 下タブバー（常時表示） -->
+<!-- 下タブバー（スタート画面後は常時表示） -->
 <nav id="tabBar">
   <button data-target="usageSection" class="active">
     <span class="icon">📘</span>
