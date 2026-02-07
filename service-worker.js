@@ -5,7 +5,7 @@
    - PWA安定動作
 --------------------------------------------------------- */
 
-const CACHE_NAME = "gait-analysis-app-v6";
+const CACHE_NAME = "gait-analysis-app-v7";
 
 /* ---------------------------------------------------------
    キャッシュするファイル一覧
@@ -83,3 +83,4 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
