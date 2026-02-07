@@ -327,18 +327,6 @@
       <div id="videoError" style="color:red;"></div>
     </div>
 
-    <!-- ⑤ 左右別の結果（PT用のみ表示） -->
-    <div id="resultBox" class="card" style="display:none;">
-      <h3>⑤ 左右別の結果</h3>
-      <table class="ios-table">
-        <tr><th>項目</th><th>右</th><th>左</th></tr>
-        <tr><td>骨盤の傾き（°）</td><td id="pelvisRCell" class="result-cell"></td><td id="pelvisLCell" class="result-cell"></td></tr>
-        <tr><td>外転（°）</td><td id="abdRCell" class="result-cell"></td><td id="abdLCell" class="result-cell"></td></tr>
-        <tr><td>内転（°）</td><td id="addRCell" class="result-cell"></td><td id="addLCell" class="result-cell"></td></tr>
-        <tr><td>歩行速度（%）</td><td colspan="2" id="speedCell" class="result-cell" style="text-align:center;"></td></tr>
-      </table>
-    </div>
-
     <!-- ① / ①（専門的） -->
     <div id="typeBox" class="card" style="display:none;"></div>
 
@@ -365,6 +353,18 @@
           </tr>
         </thead>
         <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- ⑤ 左右別の結果（PT用のみ表示） -->
+    <div id="resultBox" class="card" style="display:none;">
+      <h3>⑤ 左右別の結果</h3>
+      <table class="ios-table">
+        <tr><th>項目</th><th>右</th><th>左</th></tr>
+        <tr><td>骨盤の傾き（°）</td><td id="pelvisRCell" class="result-cell"></td><td id="pelvisLCell" class="result-cell"></td></tr>
+        <tr><td>外転（°）</td><td id="abdRCell" class="result-cell"></td><td id="abdLCell" class="result-cell"></td></tr>
+        <tr><td>内転（°）</td><td id="addRCell" class="result-cell"></td><td id="addLCell" class="result-cell"></td></tr>
+        <tr><td>歩行速度（%）</td><td colspan="2" id="speedCell" class="result-cell" style="text-align:center;"></td></tr>
       </table>
     </div>
   </section>
