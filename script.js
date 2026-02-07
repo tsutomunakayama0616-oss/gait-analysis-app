@@ -275,7 +275,7 @@ async function analyzeVideoWithPose() {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-          const result = poseLandmarker.detectForVideo(imageData, now);
+          const result = poseLandmarker.detectForVideo(video, performance.now());
           if (result && result.landmarks && result.landmarks.length > 0) {
             const lm = result.landmarks[0];
             lastLandmarks = lm;
@@ -916,3 +916,4 @@ function loadHistory() {
 window.addEventListener("load", () => {
   loadHistory();
 });
+
