@@ -1,7 +1,9 @@
+// script.js（完全修正版：解析修正＋外向きカメラ＋YouTubeサムネ＋実エクササイズ18本）
+
 // ---------------------------------------------------------
 // グローバル変数
 // ---------------------------------------------------------
-let userMode = null; // "patient" or "therapist"
+let userMode = null;
 let poseLandmarker = null;
 let runningMode = "IMAGE";
 let lastAnalysisResult = null;
@@ -79,24 +81,22 @@ async function initPoseLandmarker() {
 // タブ切り替え
 // ---------------------------------------------------------
 function showSection(id) {
-  [usageSection, liveSection, videoSection, startSection].forEach(sec => {
-    sec.classList.remove("active");
-  });
-  const target = document.getElementById(id);
-  if (target) target.classList.add("active");
+  [usageSection, liveSection, videoSection, startSection].forEach(sec =>
+    sec.classList.remove("active")
+  );
+  document.getElementById(id).classList.add("active");
 }
 
 tabButtons.forEach(btn => {
   btn.addEventListener("click", () => {
     tabButtons.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    const target = btn.getAttribute("data-target");
-    showSection(target);
+    showSection(btn.dataset.target);
   });
 });
 
 // ---------------------------------------------------------
-// モード選択（患者様用 / 理学療法士用）
+// モード選択
 // ---------------------------------------------------------
 patientModeBtn.addEventListener("click", () => {
   userMode = "patient";
@@ -135,7 +135,7 @@ surgeryDateInput.addEventListener("change", () => {
 });
 
 // ---------------------------------------------------------
-// 撮影補助モード：チェックボックスでカメラ起動ボタン制御
+// 撮影補助モード：チェックボックス
 // ---------------------------------------------------------
 function updateLiveButtonState() {
   const allChecked = Array.from(liveChecks).every(ch => ch.checked);
@@ -144,7 +144,7 @@ function updateLiveButtonState() {
 liveChecks.forEach(ch => ch.addEventListener("change", updateLiveButtonState));
 
 // ---------------------------------------------------------
-// 撮影補助モード：カメラ起動＋録画 → 解析に反映
+// 撮影補助モード：外向きカメラで録画
 // ---------------------------------------------------------
 startLiveBtn.addEventListener("click", async () => {
   try {
@@ -154,14 +154,13 @@ startLiveBtn.addEventListener("click", async () => {
     }
 
     liveStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
+      video: { facingMode: "environment" },
       audio: false,
     });
 
     liveVideo.srcObject = liveStream;
     await liveVideo.play();
 
-    // MediaRecorder で録画開始（mimeType は指定しない）
     recordedChunks = [];
     mediaRecorder = new MediaRecorder(liveStream);
 
@@ -175,12 +174,10 @@ startLiveBtn.addEventListener("click", async () => {
       const blob = new Blob(recordedChunks, { type: recordedChunks[0]?.type || "video/mp4" });
       const url = URL.createObjectURL(blob);
 
-      // 解析用にそのまま反映
       loadedVideoURL = url;
       analysisVideo.src = url;
       analysisVideo.load();
 
-      // 解析タブへ切り替え
       tabButtons.forEach(b => b.classList.remove("active"));
       const analyzeTab = Array.from(tabButtons).find(b => b.dataset.target === "videoSection");
       if (analyzeTab) analyzeTab.classList.add("active");
@@ -236,177 +233,251 @@ analyzeVideoBtn.addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------
-// 動画解析（MediaPipe）
+// 動画解析（ファイル選択でも確実に動く版）
 // ---------------------------------------------------------
 async function analyzeVideoWithPose() {
   return new Promise((resolve) => {
-    analysisVideo.addEventListener(
-      "loadeddata",
-      async () => {
-        const video = analysisVideo;
-        const canvas = analysisCanvas;
-        const ctx = canvas.getContext("2d");
+    const startAnalysis = async () => {
+      const video = analysisVideo;
+      const canvas = analysisCanvas;
+      const ctx = canvas.getContext("2d");
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
-        let lastVideoTime = -1;
-        let pelvisR = 0, pelvisL = 0;
-        let abdR = 0, abdL = 0;
-        let addR = 0, addL = 0;
-        let frameCount = 0;
+      let lastVideoTime = -1;
+      let pelvisR = 0, pelvisL = 0;
+      let abdR = 0, abdL = 0;
+      let addR = 0, addL = 0;
+      let frameCount = 0;
 
-        runningMode = "VIDEO";
-        poseLandmarker.setOptions({ runningMode: "VIDEO" });
+      runningMode = "VIDEO";
+      poseLandmarker.setOptions({ runningMode: "VIDEO" });
 
-        async function processFrame() {
-          if (video.paused || video.ended) {
-            finalize();
-            return;
-          }
+      async function processFrame() {
+        if (video.paused || video.ended) {
+          finalize();
+          return;
+        }
 
-          const now = performance.now();
-          if (video.currentTime === lastVideoTime) {
-            requestAnimationFrame(processFrame);
-            return;
-          }
-          lastVideoTime = video.currentTime;
-
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-          // detectForVideo には video 要素を渡す
-          const result = poseLandmarker.detectForVideo(video, now);
-          if (result && result.landmarks && result.landmarks.length > 0) {
-            const lm = result.landmarks[0];
-            lastLandmarks = lm;
-
-            const rightHip = lm[24];
-            const leftHip = lm[23];
-            const rightKnee = lm[26];
-            const leftKnee = lm[25];
-
-            const pelvisAngleR = (rightHip.y - leftHip.y) * 180;
-            const pelvisAngleL = (leftHip.y - rightHip.y) * 180;
-
-            pelvisR += Math.abs(pelvisAngleR);
-            pelvisL += Math.abs(pelvisAngleL);
-
-            const abdAngleR = Math.abs(rightHip.x - rightKnee.x) * 180;
-            const abdAngleL = Math.abs(leftHip.x - leftKnee.x) * 180;
-
-            abdR += abdAngleR;
-            abdL += abdAngleL;
-
-            const addAngleR = Math.abs(rightHip.x - rightKnee.x) * 90;
-            const addAngleL = Math.abs(leftHip.x - leftKnee.x) * 90;
-
-            addR += addAngleR;
-            addL += addAngleL;
-
-            frameCount++;
-          }
-
+        const now = performance.now();
+        if (video.currentTime === lastVideoTime) {
           requestAnimationFrame(processFrame);
+          return;
+        }
+        lastVideoTime = video.currentTime;
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const result = poseLandmarker.detectForVideo(video, now);
+        if (result && result.landmarks && result.landmarks.length > 0) {
+          const lm = result.landmarks[0];
+          lastLandmarks = lm;
+
+          const rightHip = lm[24];
+          const leftHip  = lm[23];
+          const rightKnee = lm[26];
+          const leftKnee  = lm[25];
+
+          const pelvisAngleR = (rightHip.y - leftHip.y) * 180;
+          const pelvisAngleL = (leftHip.y - rightHip.y) * 180;
+
+          pelvisR += Math.abs(pelvisAngleR);
+          pelvisL += Math.abs(pelvisAngleL);
+
+          const abdAngleR = Math.abs(rightHip.x - rightKnee.x) * 180;
+          const abdAngleL = Math.abs(leftHip.x - leftKnee.x) * 180;
+
+          abdR += abdAngleR;
+          abdL += abdAngleL;
+
+          const addAngleR = Math.abs(rightHip.x - rightKnee.x) * 90;
+          const addAngleL = Math.abs(leftHip.x - leftKnee.x) * 90;
+
+          addR += addAngleR;
+          addL += addAngleL;
+
+          frameCount++;
         }
 
-        function finalize() {
-          if (frameCount === 0) {
-            videoStatus.textContent = "解析できるフレームがありませんでした。";
-            resolve();
-            return;
-          }
+        requestAnimationFrame(processFrame);
+      }
 
-          pelvisR /= frameCount;
-          pelvisL /= frameCount;
-          abdR /= frameCount;
-          abdL /= frameCount;
-          addR /= frameCount;
-          addL /= frameCount;
-
-          const speedPercent = 100;
-
-          lastAnalysisResult = {
-            pelvisR,
-            pelvisL,
-            abdR,
-            abdL,
-            addR,
-            addL,
-            speedPercent,
-            types: [],
-          };
-
-          videoStatus.textContent = "解析が完了しました。";
-          finalizeAnalysis();
+      function finalize() {
+        if (frameCount === 0) {
+          videoStatus.textContent = "解析できるフレームがありませんでした。";
           resolve();
+          return;
         }
 
-        await video.play();
-        processFrame();
-      },
-      { once: true }
-    );
+        pelvisR /= frameCount;
+        pelvisL /= frameCount;
+        abdR   /= frameCount;
+        abdL   /= frameCount;
+        addR   /= frameCount;
+        addL   /= frameCount;
+
+        const speedPercent = 100;
+
+        lastAnalysisResult = {
+          pelvisR,
+          pelvisL,
+          abdR,
+          abdL,
+          addR,
+          addL,
+          speedPercent,
+          types: [],
+        };
+
+        videoStatus.textContent = "解析が完了しました。";
+        finalizeAnalysis();
+        resolve();
+      }
+
+      await video.play();
+      processFrame();
+    };
+
+    if (analysisVideo.readyState >= 2) {
+      startAnalysis();
+    } else {
+      analysisVideo.addEventListener("loadeddata", startAnalysis, { once: true });
+    }
   });
 }
 
 // ---------------------------------------------------------
-// エクササイズリスト（ダミー18本）
+// エクササイズ一覧（添付ファイル18本に置換）
 // ---------------------------------------------------------
 const exerciseList = [
-  { id: 1, category: "ストレッチ", name: "ハムストリングスストレッチ", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX1" },
-  { id: 2, category: "ストレッチ", name: "大腿四頭筋ストレッチ", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX2" },
-  { id: 3, category: "ストレッチ", name: "ふくらはぎストレッチ", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX3" },
-  { id: 4, category: "ストレッチ", name: "内転筋ストレッチ", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX4" },
-  { id: 5, category: "ポンプ運動", name: "足首ポンプ運動", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX5" },
-  { id: 6, category: "ポンプ運動", name: "膝の曲げ伸ばし運動", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX6" },
-  { id: 7, category: "筋力トレーニング", name: "ブリッジ", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX7" },
-  { id: 8, category: "筋力トレーニング", name: "ヒップリフト", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX8" },
-  { id: 9, category: "筋力トレーニング", name: "スクワット", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX9" },
-  { id: 10, category: "筋力トレーニング", name: "膝伸展トレーニング", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX10" },
-  { id: 11, category: "筋力トレーニング", name: "レッグエクステンション", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX11" },
-  { id: 12, category: "中殿筋トレーニング", name: "サイドレッグレイズ", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX12" },
-  { id: 13, category: "中殿筋トレーニング", name: "クラムシェル", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX13" },
-  { id: 14, category: "バランストレーニング", name: "片脚立ち", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX14" },
-  { id: 15, category: "バランストレーニング", name: "タンデムスタンス", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX15" },
-  { id: 16, category: "有酸素運動", name: "平地歩行", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX16" },
-  { id: 17, category: "有酸素運動", name: "エルゴメーター", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX17" },
-  { id: 18, category: "有酸素運動", name: "ステップ運動", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX18" },
+  { id: 1,  category: "ストレッチ",           name: "ハムストリングス（大腿部後面）のストレッチ",              url: "https://youtu.be/ihchQBuigY0" },
+  { id: 2,  category: "ストレッチ",           name: "大腿四頭筋（大腿部前面）のストレッチ",                  url: "https://youtu.be/lVpF9TiepLg" },
+  { id: 3,  category: "ストレッチ",           name: "腸腰筋（股関節前面）のストレッチ",                      url: "https://youtu.be/XIA80pBZ3ws" },
+  { id: 4,  category: "ストレッチ",           name: "内転筋（大腿部内側）のストレッチ",                      url: "https://youtu.be/racb4M_hycM" },
+  { id: 5,  category: "ストレッチ",           name: "下腿三頭筋（ふくらはぎ）のストレッチ",                  url: "https://youtu.be/Wbi5St1J9Kk" },
+  { id: 6,  category: "ポンプ運動",           name: "足首の上下（ポンプ）運動",                              url: "https://youtu.be/-inqX6tmDm8" },
+  { id: 7,  category: "筋力トレーニング",     name: "大殿筋（お尻）の筋力増強運動（収縮のみ）",              url: "https://youtu.be/4ckJ67_8IB8" },
+  { id: 8,  category: "筋力トレーニング",     name: "大殿筋（お尻）の筋力増強運動（ブリッジ）",              url: "https://youtu.be/9zKZ-YRmU8I" },
+  { id: 9,  category: "筋力トレーニング",     name: "大殿筋（お尻）の筋力増強運動（立位）",                  url: "https://youtu.be/aikGoCaTFFI" },
+  { id: 10, category: "筋力トレーニング",     name: "大腿四頭筋（大腿部前面）の筋力増強運動（セッティング）", url: "https://youtu.be/rweyU-3O3zo" },
+  { id: 11, category: "筋力トレーニング",     name: "大腿四頭筋（大腿部前面）の筋力増強運動（SLR）",        url: "https://youtu.be/fNM6w_RnVRk" },
+  { id: 12, category: "中殿筋トレーニング",   name: "中殿筋（殿部外側）の筋力増強運動（背臥位）",            url: "https://youtu.be/UBN5jCP-ErM" },
+  { id: 13, category: "中殿筋トレーニング",   name: "中殿筋（殿部外側）の筋力増強運動（立位）",              url: "https://youtu.be/0gKoLDR8HcI" },
+  { id: 14, category: "バランストレーニング", name: "バランス運動（タンデム）",                              url: "https://youtu.be/F0OVS9LT1w4" },
+  { id: 15, category: "バランストレーニング", name: "バランス運動（片脚立位）",                              url: "https://youtu.be/HUjoGJtiknc" },
+  { id: 16, category: "有酸素運動",           name: "ウォーキング",                                          url: "https://youtu.be/Cs4NOzgkS8s" },
+  { id: 17, category: "有酸素運動",           name: "自転車エルゴメータ",                                    url: "https://youtu.be/12_J_pr-MUE" },
+  { id: 18, category: "有酸素運動",           name: "水中運動",                                              url: "https://youtu.be/xqj3dn9mw50" },
 ];
 
 // ---------------------------------------------------------
-// YouTube サムネイル取得
+// YouTube サムネイル取得（通常URL＋短縮URL対応）
 // ---------------------------------------------------------
 function getThumbnail(url) {
   try {
     const u = new URL(url);
-    const id = u.searchParams.get("v");
-    if (!id) return "";
-    return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    let id = u.searchParams.get("v");
+    if (!id && u.hostname.includes("youtu.be")) {
+      id = u.pathname.replace("/", "");
+    }
+    return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : "";
   } catch {
     return "";
   }
 }
 
-/* ---------------------------------------------------------
-  角度計算（3点からの角度）※必要なら利用
---------------------------------------------------------- */
-function angleDeg(ax, ay, bx, by, cx, cy) {
-  const v1x = ax - bx;
-  const v1y = ay - by;
-  const v2x = cx - bx;
-  const v2y = cy - by;
-  const dot = v1x * v2x + v1y * v2y;
-  const n1 = Math.sqrt(v1x * v1x + v1y * v1y);
-  const n2 = Math.sqrt(v2x * v2x + v2y * v2y);
-  if (n1 === 0 || n2 === 0) return 0;
-  let cos = dot / (n1 * n2);
-  cos = Math.min(1, Math.max(-1, cos));
-  return (Math.acos(cos) * 180) / Math.PI;
+// ---------------------------------------------------------
+// エクササイズHTML（サムネイルはそのまま表示）
+// ---------------------------------------------------------
+function buildExerciseHTML(exercises) {
+  return exercises.map(ex => `
+    <div style="margin-bottom:12px; display:flex; align-items:flex-start; gap:8px;">
+      <div style="flex:0 0 35%;">
+        <a href="${ex.url}" target="_blank" rel="noopener noreferrer">
+          <img src="${getThumbnail(ex.url)}"
+               style="width:100%;border-radius:8px;margin-top:4px;">
+        </a>
+      </div>
+      <div style="flex:1;">
+        <strong>${ex.category}</strong><br>
+        ${ex.name}
+      </div>
+    </div>
+  `).join("");
 }
 
-/* ---------------------------------------------------------
-  一般的な歩行特徴診断（患者様向けラベル付き）
---------------------------------------------------------- */
+// ---------------------------------------------------------
+// 色分けロジック
+// ---------------------------------------------------------
+function colorizeResult(value, type) {
+  if (type === "pelvis") {
+    if (value >= 15) return "danger";
+    if (value >= 10) return "warning";
+    return "normal";
+  }
+  if (type === "abd") {
+    if (value <= 3) return "danger";
+    if (value <= 5) return "warning";
+    return "normal";
+  }
+  if (type === "add") {
+    if (value >= 15) return "danger";
+    if (value >= 10) return "warning";
+    return "normal";
+  }
+  if (type === "speed") {
+    if (value < 70 || value > 130) return "danger";
+    if (value < 80 || value > 120) return "warning";
+    return "normal";
+  }
+  return "normal";
+}
+
+function setColoredValue(id, value, type) {
+  const cell = document.getElementById(id);
+  cell.textContent = value.toFixed(1);
+
+  const status = colorizeResult(value, type);
+  cell.classList.remove("result-normal", "result-warning", "result-danger");
+  cell.classList.add(`result-${status}`);
+}
+
+// ---------------------------------------------------------
+// 患者様用の特徴リストHTML（色付きラベル）
+// ---------------------------------------------------------
+function buildTypeListHTML(types) {
+  return `
+    <ul style="list-style:none; padding-left:0;">
+      ${types.map(t => {
+        let color = "#007aff";
+        if (t.level === "warning") color = "#ff9500";
+        if (t.level === "danger") color = "#ff3b30";
+        return `
+          <li style="margin-bottom:6px;">
+            <span style="
+              display:inline-block;
+              min-width:70px;
+              padding:2px 6px;
+              border-radius:999px;
+              font-size:11px;
+              color:white;
+              background:${color};
+              margin-right:6px;
+            ">
+              ${t.level === "normal" ? "目安" : t.level === "warning" ? "注意" : "大きめ"}
+            </span>
+            <span>${t.text}</span>
+          </li>
+        `;
+      }).join("")}
+    </ul>
+  `;
+}
+
+// ---------------------------------------------------------
+// 一般的な歩行特徴診断（患者様向け）
+// ---------------------------------------------------------
 function diagnoseGait(pR, pL, abdR, abdL, addR, addL, speed) {
   const types = [];
 
@@ -449,9 +520,9 @@ function diagnoseGait(pR, pL, abdR, abdL, addR, addL, speed) {
   return types;
 }
 
-/* ---------------------------------------------------------
-  THA特有の代償動作の診断
---------------------------------------------------------- */
+// ---------------------------------------------------------
+// THA特有の代償動作の診断
+// ---------------------------------------------------------
 function diagnoseTHA(landmarks, expert = false) {
   const typesTHA = [];
   if (!landmarks || landmarks.length < 29) return typesTHA;
@@ -510,9 +581,9 @@ function diagnoseTHA(landmarks, expert = false) {
   return typesTHA;
 }
 
-/* ---------------------------------------------------------
-  エクササイズ推薦
---------------------------------------------------------- */
+// ---------------------------------------------------------
+// エクササイズ推薦
+// ---------------------------------------------------------
 function recommendExercises(pR, pL, abdR, abdL, addR, addL, speed) {
   const ids = [];
 
@@ -551,104 +622,12 @@ function recommendExercises(pR, pL, abdR, abdL, addR, addL, speed) {
     .filter(Boolean);
 }
 
-/* ---------------------------------------------------------
-  エクササイズHTML生成（サムネイルサイズはそのまま）
---------------------------------------------------------- */
-function buildExerciseHTML(exercises) {
-  return exercises.map(ex => `
-    <div style="margin-bottom:12px; display:flex; align-items:flex-start; gap:8px;">
-      <div style="flex:0 0 35%;">
-        <a href="${ex.url}" target="_blank" rel="noopener noreferrer">
-          <img src="${getThumbnail(ex.url)}"
-               style="width:100%;border-radius:8px;margin-top:4px;">
-        </a>
-      </div>
-      <div style="flex:1;">
-        <strong>${ex.category}</strong><br>
-        ${ex.name}
-      </div>
-    </div>
-  `).join("");
-}
-
-/* ---------------------------------------------------------
-  色分けロジック
---------------------------------------------------------- */
-function colorizeResult(value, type) {
-  if (type === "pelvis") {
-    if (value >= 15) return "danger";
-    if (value >= 10) return "warning";
-    return "normal";
-  }
-  if (type === "abd") {
-    if (value <= 3) return "danger";
-    if (value <= 5) return "warning";
-    return "normal";
-  }
-  if (type === "add") {
-    if (value >= 15) return "danger";
-    if (value >= 10) return "warning";
-    return "normal";
-  }
-  if (type === "speed") {
-    if (value < 70 || value > 130) return "danger";
-    if (value < 80 || value > 120) return "warning";
-    return "normal";
-  }
-  return "normal";
-}
-
-function setColoredValue(id, value, type) {
-  const cell = document.getElementById(id);
-  cell.textContent = value.toFixed(1);
-
-  const status = colorizeResult(value, type);
-  cell.classList.remove("result-normal", "result-warning", "result-danger");
-  cell.classList.add(`result-${status}`);
-}
-
-/* ---------------------------------------------------------
-  患者様用の特徴リストHTML（色付きラベル）
---------------------------------------------------------- */
-function buildTypeListHTML(types) {
-  return `
-    <ul style="list-style:none; padding-left:0;">
-      ${types.map(t => {
-        let color = "#007aff";
-        if (t.level === "warning") color = "#ff9500";
-        if (t.level === "danger") color = "#ff3b30";
-        return `
-          <li style="margin-bottom:6px;">
-            <span style="
-              display:inline-block;
-              min-width:70px;
-              padding:2px 6px;
-              border-radius:999px;
-              font-size:11px;
-              color:white;
-              background:${color};
-              margin-right:6px;
-            ">
-              ${t.level === "normal" ? "目安" : t.level === "warning" ? "注意" : "大きめ"}
-            </span>
-            <span>${t.text}</span>
-          </li>
-        `;
-      }).join("")}
-    </ul>
-  `;
-}
-
-/* ---------------------------------------------------------
-  解析後の表示処理（患者様用 / 理学療法士用）
---------------------------------------------------------- */
+// ---------------------------------------------------------
+// 解析後の表示処理
+// ---------------------------------------------------------
 function finalizeAnalysis() {
   const r = lastAnalysisResult;
   if (!r) return;
-
-  const resultBox = document.getElementById("resultBox");
-  const graphCard = document.getElementById("graphCard");
-  const historyCard = document.getElementById("historyCard");
 
   let types = diagnoseGait(
     r.pelvisR, r.pelvisL,
@@ -660,7 +639,6 @@ function finalizeAnalysis() {
   types = types.concat(thaTypes);
   r.types = types;
 
-  // 患者様用
   if (userMode === "patient") {
     resultBox.style.display = "none";
 
@@ -690,15 +668,12 @@ function finalizeAnalysis() {
     historyCard.style.display = "none";
   }
 
-  // 理学療法士用
   if (userMode === "therapist") {
-    // ① 特徴（専門的）
     typeBox.style.display = "block";
     typeBox.innerHTML =
       `<h3>① あなたの歩行の特徴（専門的）</h3>` +
       `<ul>${types.map(t => `<li>${t.text}</li>`).join("")}</ul>`;
 
-    // ② エクササイズ
     const exercises = recommendExercises(
       r.pelvisR, r.pelvisL,
       r.abdR, r.abdL,
@@ -714,15 +689,12 @@ function finalizeAnalysis() {
       exerciseBox.style.display = "none";
     }
 
-    // ③ グラフ
     graphCard.style.display = "block";
     graphCard.querySelector("h3").textContent = "③ 回復の変化を比べる（グラフ）";
 
-    // ④ 表
     historyCard.style.display = "block";
     historyCard.querySelector("h3").textContent = "④ 回復の変化を比べる（表）";
 
-    // ⑤ 左右別
     resultBox.style.display = "block";
     resultBox.querySelector("h3").textContent = "⑤ 左右別の結果";
 
@@ -740,11 +712,8 @@ function finalizeAnalysis() {
     speedCell.classList.add(`result-${speedStatus}`);
   }
 
-  // 履歴保存・表更新・グラフ更新（共通）
   let label = surgeryDiffText.textContent.trim();
-  if (!label) {
-    label = "日付未設定";
-  }
+  if (!label) label = "日付未設定";
 
   historyLabels.push(label);
   historyPelvis.push((r.pelvisR + r.pelvisL) / 2);
@@ -767,9 +736,9 @@ function finalizeAnalysis() {
   updateCompareChart();
 }
 
-/* ---------------------------------------------------------
-  グラフ描画
---------------------------------------------------------- */
+// ---------------------------------------------------------
+// グラフ描画
+// ---------------------------------------------------------
 function updateCompareChart() {
   const ctx = document.getElementById("compareChart").getContext("2d");
   if (compareChart) compareChart.destroy();
@@ -824,9 +793,9 @@ function updateCompareChart() {
   });
 }
 
-/* ---------------------------------------------------------
-  PDFレポート作成
---------------------------------------------------------- */
+// ---------------------------------------------------------
+// PDFレポート作成
+// ---------------------------------------------------------
 document.getElementById("pdfReportBtn").addEventListener("click", async () => {
   if (!lastAnalysisResult) return;
 
@@ -879,9 +848,9 @@ document.getElementById("pdfReportBtn").addEventListener("click", async () => {
   doc.save("gait-report.pdf");
 });
 
-/* ---------------------------------------------------------
-  履歴保存・読み込み
---------------------------------------------------------- */
+// ---------------------------------------------------------
+// 履歴保存・読み込み
+// ---------------------------------------------------------
 function saveHistory() {
   const data = {
     labels: historyLabels,
@@ -905,9 +874,9 @@ function loadHistory() {
   historySpeed.push(...obj.speed);
 }
 
-/* ---------------------------------------------------------
-  初期化
---------------------------------------------------------- */
+// ---------------------------------------------------------
+// 初期化
+// ---------------------------------------------------------
 window.addEventListener("load", () => {
   loadHistory();
 });
