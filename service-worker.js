@@ -1,15 +1,9 @@
 /* ---------------------------------------------------------
-   歩行解析アプリ - Service Worker（最終完成版）
-   - オフライン対応
-   - ルート直下の画像キャッシュ対応
-   - PWA安定動作
+   歩行解析アプリ - Service Worker（完全版）
 --------------------------------------------------------- */
 
-const CACHE_NAME = "gait-analysis-app-v7";
+const CACHE_NAME = "gait-analysis-app-v8";
 
-/* ---------------------------------------------------------
-   キャッシュするファイル一覧
---------------------------------------------------------- */
 const ASSETS = [
   "./",
   "./index.html",
@@ -17,24 +11,18 @@ const ASSETS = [
   "./manifest.json",
   "./pdf-font.js",
 
-  /* 画像（ルート直下） */
   "./exercise.png",
   "./pelvis.png",
   "./leg-move.png",
 
-  /* アイコン */
   "./icon-192.png",
   "./icon-512.png",
 
-  /* 外部ライブラリ */
   "https://cdn.jsdelivr.net/npm/chart.js",
   "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0",
 ];
 
-/* ---------------------------------------------------------
-   インストール時：キャッシュ登録
---------------------------------------------------------- */
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -43,9 +31,6 @@ self.addEventListener("install", (event) => {
   );
 });
 
-/* ---------------------------------------------------------
-   アクティベート時：古いキャッシュ削除
---------------------------------------------------------- */
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -58,13 +43,8 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-/* ---------------------------------------------------------
-   fetch：キャッシュ優先で返す
---------------------------------------------------------- */
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-
-  // GET 以外は無視
   if (request.method !== "GET") return;
 
   event.respondWith(
@@ -83,4 +63,3 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
-
