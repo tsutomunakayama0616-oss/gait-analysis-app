@@ -154,16 +154,16 @@ startLiveBtn.addEventListener("click", async () => {
     }
 
     liveStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
+      video: true,
       audio: false,
     });
 
     liveVideo.srcObject = liveStream;
-    liveVideo.play();
+    await liveVideo.play();
 
-    // MediaRecorder で録画開始
+    // MediaRecorder で録画開始（mimeType は指定しない）
     recordedChunks = [];
-    mediaRecorder = new MediaRecorder(liveStream, { mimeType: "video/webm" });
+    mediaRecorder = new MediaRecorder(liveStream);
 
     mediaRecorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
@@ -172,7 +172,7 @@ startLiveBtn.addEventListener("click", async () => {
     };
 
     mediaRecorder.onstop = () => {
-      const blob = new Blob(recordedChunks, { type: "video/webm" });
+      const blob = new Blob(recordedChunks, { type: recordedChunks[0]?.type || "video/mp4" });
       const url = URL.createObjectURL(blob);
 
       // 解析用にそのまま反映
@@ -259,7 +259,7 @@ async function analyzeVideoWithPose() {
         runningMode = "VIDEO";
         poseLandmarker.setOptions({ runningMode: "VIDEO" });
 
-        function processFrame() {
+        async function processFrame() {
           if (video.paused || video.ended) {
             finalize();
             return;
@@ -273,14 +273,13 @@ async function analyzeVideoWithPose() {
           lastVideoTime = video.currentTime;
 
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-          const result = poseLandmarker.detectForVideo(video, performance.now());
+          // detectForVideo には video 要素を渡す
+          const result = poseLandmarker.detectForVideo(video, now);
           if (result && result.landmarks && result.landmarks.length > 0) {
             const lm = result.landmarks[0];
             lastLandmarks = lm;
 
-            // ここで骨盤傾き・外転・内転などを計算（簡略版）
             const rightHip = lm[24];
             const leftHip = lm[23];
             const rightKnee = lm[26];
@@ -324,7 +323,6 @@ async function analyzeVideoWithPose() {
           addR /= frameCount;
           addL /= frameCount;
 
-          // 歩行速度（仮に100%固定でもよいが、ここでは仮の値）
           const speedPercent = 100;
 
           lastAnalysisResult = {
@@ -343,7 +341,7 @@ async function analyzeVideoWithPose() {
           resolve();
         }
 
-        video.play();
+        await video.play();
         processFrame();
       },
       { once: true }
@@ -352,7 +350,7 @@ async function analyzeVideoWithPose() {
 }
 
 // ---------------------------------------------------------
-// エクササイズリスト（18本）
+// エクササイズリスト（ダミー18本）
 // ---------------------------------------------------------
 const exerciseList = [
   { id: 1, category: "ストレッチ", name: "ハムストリングスストレッチ", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX1" },
@@ -453,8 +451,6 @@ function diagnoseGait(pR, pL, abdR, abdL, addR, addL, speed) {
 
 /* ---------------------------------------------------------
   THA特有の代償動作の診断
-  - expert = true のときは専門的表現
-  - 戻り値は { level, text } 形式
 --------------------------------------------------------- */
 function diagnoseTHA(landmarks, expert = false) {
   const typesTHA = [];
@@ -556,12 +552,12 @@ function recommendExercises(pR, pL, abdR, abdL, addR, addL, speed) {
 }
 
 /* ---------------------------------------------------------
-  エクササイズHTML生成（サムネイル 1/4 サイズ）
+  エクササイズHTML生成（サムネイルサイズはそのまま）
 --------------------------------------------------------- */
 function buildExerciseHTML(exercises) {
   return exercises.map(ex => `
     <div style="margin-bottom:12px; display:flex; align-items:flex-start; gap:8px;">
-      <div style="flex:0 0 25%;">
+      <div style="flex:0 0 35%;">
         <a href="${ex.url}" target="_blank" rel="noopener noreferrer">
           <img src="${getThumbnail(ex.url)}"
                style="width:100%;border-radius:8px;margin-top:4px;">
@@ -654,7 +650,6 @@ function finalizeAnalysis() {
   const graphCard = document.getElementById("graphCard");
   const historyCard = document.getElementById("historyCard");
 
-  // 特徴（一般＋THA）
   let types = diagnoseGait(
     r.pelvisR, r.pelvisL,
     r.abdR, r.abdL,
@@ -916,4 +911,3 @@ function loadHistory() {
 window.addEventListener("load", () => {
   loadHistory();
 });
-
