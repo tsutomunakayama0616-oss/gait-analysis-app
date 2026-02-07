@@ -18,7 +18,7 @@ let lastLandmarks = null;
 let lastAnalysisResult = null;
 let userMode = "none";
 
-/* 簡易エクササイズリスト（例） */
+/* エクササイズリスト（YouTube + サムネイル） */
 const exerciseList = [
   { id: 7, category: "骨盤安定", name: "中殿筋トレーニング", url: "https://www.youtube.com/watch?v=xxxx1" },
   { id: 8, category: "体幹安定", name: "側方プランク", url: "https://www.youtube.com/watch?v=xxxx2" },
@@ -32,19 +32,17 @@ const exerciseList = [
 ];
 
 function getThumbnail(url) {
-  return "exercise.png"; // シンプルに共通サムネイル
+  return "exercise.png"; // 共通サムネイル
 }
 
 /* ---------------------------------------------------------
   スタート画面：患者様用 / 理学療法士用
 --------------------------------------------------------- */
 const startSection = document.getElementById("startSection");
-const tabBar = document.getElementById("tabBar");
 
 document.getElementById("patientModeBtn").addEventListener("click", () => {
   userMode = "patient";
   startSection.style.display = "none";
-  tabBar.style.display = "flex";
 
   document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
   document.getElementById("videoSection").classList.add("active");
@@ -55,7 +53,6 @@ document.getElementById("patientModeBtn").addEventListener("click", () => {
 document.getElementById("therapistModeBtn").addEventListener("click", () => {
   userMode = "therapist";
   startSection.style.display = "none";
-  tabBar.style.display = "flex";
 
   document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
   document.getElementById("usageSection").classList.add("active");
@@ -64,7 +61,7 @@ document.getElementById("therapistModeBtn").addEventListener("click", () => {
 });
 
 /* ---------------------------------------------------------
-  下タブバー切り替え
+  下タブバー（常時表示）
 --------------------------------------------------------- */
 function setActiveTab(targetId) {
   document.querySelectorAll("#tabBar button").forEach(btn => {
@@ -446,7 +443,7 @@ function diagnoseTHA(landmarks, expert = false) {
 }
 
 /* ---------------------------------------------------------
-  エクササイズ推薦
+  エクササイズ推薦（YouTube + サムネイル）
 --------------------------------------------------------- */
 function recommendExercises(pR, pL, abdR, abdL, addR, addL, speed) {
   const ids = [];
@@ -458,6 +455,20 @@ function recommendExercises(pR, pL, abdR, abdL, addR, addL, speed) {
 
   const unique = [...new Set(ids)];
   return unique.map(id => exerciseList.find(e => e.id === id)).filter(Boolean);
+}
+
+/* HTML生成 */
+function buildExerciseHTML(exercises) {
+  return exercises.map(ex => `
+    <div style="margin-bottom:12px;">
+      <strong>${ex.category}</strong><br>
+      ${ex.name}<br>
+      <a href="${ex.url}" target="_blank" rel="noopener noreferrer">
+        <img src="${getThumbnail(ex.url)}"
+             style="width:100%;border-radius:8px;margin-top:4px;">
+      </a>
+    </div>
+  `).join("");
 }
 
 /* ---------------------------------------------------------
@@ -497,30 +508,17 @@ function setColoredValue(id, value, type) {
 }
 
 /* ---------------------------------------------------------
-  解析後の表示処理
+  解析後の表示処理（患者様用 / PT用）
 --------------------------------------------------------- */
 function finalizeAnalysis() {
   const r = lastAnalysisResult;
   if (!r) return;
 
-  /* 左右別（PT用のみ） */
-  if (userMode === "therapist") {
-    document.getElementById("resultBox").style.display = "block";
-    setColoredValue("pelvisRCell", r.pelvisR, "pelvis");
-    setColoredValue("pelvisLCell", r.pelvisL, "pelvis");
-    setColoredValue("abdRCell", r.abdR, "abd");
-    setColoredValue("abdLCell", r.abdL, "abd");
-    setColoredValue("addRCell", r.addR, "add");
-    setColoredValue("addLCell", r.addL, "add");
-
-    const speedCell = document.getElementById("speedCell");
-    speedCell.textContent = r.speedPercent.toFixed(1);
-    const speedStatus = colorizeResult(r.speedPercent, "speed");
-    speedCell.classList.remove("result-normal", "result-warning", "result-danger");
-    speedCell.classList.add(`result-${speedStatus}`);
-  } else {
-    document.getElementById("resultBox").style.display = "none";
-  }
+  const typeBox = document.getElementById("typeBox");
+  const exerciseBox = document.getElementById("exerciseBox");
+  const graphCard = document.getElementById("graphCard");
+  const historyCard = document.getElementById("historyCard");
+  const resultBox = document.getElementById("resultBox");
 
   /* 特徴（一般＋THA） */
   let types = diagnoseGait(
@@ -533,51 +531,95 @@ function finalizeAnalysis() {
   types = types.concat(thaTypes);
   r.types = types;
 
-  const typeBox = document.getElementById("typeBox");
-  typeBox.style.display = "block";
-  if (userMode === "therapist") {
-    typeBox.innerHTML =
-      `<h3>② 歩き方の特徴（専門的）</h3>
-       <ul>${types.map(t => `<li>${t}</li>`).join("")}</ul>`;
-  } else {
+  /* -------------------------------
+     患者様用
+  -------------------------------- */
+  if (userMode === "patient") {
+
+    // ① あなたの歩行の特徴
+    typeBox.style.display = "block";
     typeBox.innerHTML =
       `<h3>① あなたの歩行の特徴</h3>
        <ul>${types.map(t => `<li>${t}</li>`).join("")}</ul>`;
-  }
 
-  /* エクササイズ推薦 */
-  const exercises = recommendExercises(
-    r.pelvisR, r.pelvisL,
-    r.abdR, r.abdL,
-    r.addR, r.addL,
-    r.speedPercent
-  );
-
-  const exerciseBox = document.getElementById("exerciseBox");
-  if (exercises.length > 0) {
-    exerciseBox.style.display = "block";
-    const exerciseHTML = exercises.map(ex => `
-      <div style="margin-bottom:12px;">
-        <strong>${ex.category}</strong><br>
-        ${ex.name}<br>
-        <a href="${ex.url}" target="_blank" rel="noopener noreferrer">
-          <img src="${getThumbnail(ex.url)}" style="width:100%;border-radius:8px;margin-top:4px;">
-        </a>
-      </div>
-    `).join("");
-
-    if (userMode === "therapist") {
+    // ② あなたにおすすめのセルフエクササイズ
+    const exercises = recommendExercises(
+      r.pelvisR, r.pelvisL,
+      r.abdR, r.abdL,
+      r.addR, r.addL,
+      r.speedPercent
+    );
+    if (exercises.length > 0) {
+      exerciseBox.style.display = "block";
       exerciseBox.innerHTML =
-        `<h3>④ あなたにおすすめのセルフエクササイズ</h3>${exerciseHTML}`;
+        `<h3>② あなたにおすすめのセルフエクササイズ</h3>` +
+        buildExerciseHTML(exercises);
     } else {
-      exerciseBox.innerHTML =
-        `<h3>③ あなたにおすすめのセルフエクササイズ</h3>${exerciseHTML}`;
+      exerciseBox.style.display = "none";
     }
-  } else {
-    exerciseBox.style.display = "none";
+
+    // ③ グラフ
+    graphCard.style.display = "block";
+
+    // 表は非表示
+    historyCard.style.display = "none";
+
+    // 左右別も非表示
+    resultBox.style.display = "none";
   }
 
-  /* 履歴保存 */
+  /* -------------------------------
+     理学療法士用
+  -------------------------------- */
+  if (userMode === "therapist") {
+
+    // ① あなたの歩行の特徴（専門的）
+    typeBox.style.display = "block";
+    typeBox.innerHTML =
+      `<h3>① あなたの歩行の特徴（専門的）</h3>
+       <ul>${types.map(t => `<li>${t}</li>`).join("")}</ul>`;
+
+    // ② あなたにおすすめのセルフエクササイズ
+    const exercises = recommendExercises(
+      r.pelvisR, r.pelvisL,
+      r.abdR, r.abdL,
+      r.addR, r.addL,
+      r.speedPercent
+    );
+    if (exercises.length > 0) {
+      exerciseBox.style.display = "block";
+      exerciseBox.innerHTML =
+        `<h3>② あなたにおすすめのセルフエクササイズ</h3>` +
+        buildExerciseHTML(exercises);
+    } else {
+      exerciseBox.style.display = "none";
+    }
+
+    // ③ グラフ
+    graphCard.style.display = "block";
+
+    // ④ 表
+    historyCard.style.display = "block";
+
+    // ⑤ 左右別の結果
+    resultBox.style.display = "block";
+    setColoredValue("pelvisRCell", r.pelvisR, "pelvis");
+    setColoredValue("pelvisLCell", r.pelvisL, "pelvis");
+    setColoredValue("abdRCell", r.abdR, "abd");
+    setColoredValue("abdLCell", r.abdL, "abd");
+    setColoredValue("addRCell", r.addR, "add");
+    setColoredValue("addLCell", r.addL, "add");
+
+    const speedCell = document.getElementById("speedCell");
+    speedCell.textContent = r.speedPercent.toFixed(1);
+    const speedStatus = colorizeResult(r.speedPercent, "speed");
+    speedCell.classList.remove("result-normal", "result-warning", "result-danger");
+    speedCell.classList.add(`result-${speedStatus}`);
+  }
+
+  /* -------------------------------
+     履歴保存・表更新・グラフ更新（共通）
+  -------------------------------- */
   const label = document.getElementById("surgeryDiffText").textContent || `解析${historyLabels.length + 1}`;
   historyLabels.push(label);
   historyPelvis.push((r.pelvisR + r.pelvisL) / 2);
@@ -586,7 +628,6 @@ function finalizeAnalysis() {
   historySpeed.push(r.speedPercent);
   saveHistory();
 
-  /* 表更新 */
   const tbody = document.querySelector("#resultTable tbody");
   const row = document.createElement("tr");
   row.innerHTML = `
@@ -598,10 +639,6 @@ function finalizeAnalysis() {
   `;
   tbody.appendChild(row);
 
-  document.getElementById("historyCard").style.display = "block";
-
-  /* グラフ表示（患者様・PTともに表示） */
-  document.getElementById("graphCard").style.display = "block";
   updateCompareChart();
 }
 
