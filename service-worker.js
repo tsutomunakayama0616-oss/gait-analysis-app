@@ -2,7 +2,7 @@
    歩行解析アプリ - Service Worker（完全版）
 --------------------------------------------------------- */
 
-const CACHE_NAME = "gait-analysis-app-v8";
+const CACHE_NAME = "gait-analysis-app-v9";
 
 const ASSETS = [
   "./",
