@@ -18,27 +18,53 @@ let lastLandmarks = null;
 let lastAnalysisResult = null;
 let userMode = "none";
 
-/* エクササイズリスト（YouTube + サムネイル） */
+/* ---------------------------------------------------------
+  エクササイズリスト（添付の18本）
+--------------------------------------------------------- */
 const exerciseList = [
-  { id: 7, category: "骨盤安定", name: "中殿筋トレーニング", url: "https://www.youtube.com/watch?v=xxxx1" },
-  { id: 8, category: "体幹安定", name: "側方プランク", url: "https://www.youtube.com/watch?v=xxxx2" },
-  { id: 9, category: "外転強化", name: "立位外転エクササイズ", url: "https://www.youtube.com/watch?v=xxxx3" },
-  { id: 10, category: "歩行速度改善", name: "テンポ歩行練習", url: "https://www.youtube.com/watch?v=xxxx4" },
-  { id: 11, category: "歩行速度改善", name: "インターバル歩行", url: "https://www.youtube.com/watch?v=xxxx5" },
-  { id: 14, category: "骨盤・体幹", name: "片脚立位バランス", url: "https://www.youtube.com/watch?v=xxxx6" },
-  { id: 15, category: "内転抑制", name: "クラムシェル", url: "https://www.youtube.com/watch?v=xxxx7" },
-  { id: 16, category: "持久力", name: "連続歩行練習", url: "https://www.youtube.com/watch?v=xxxx8" },
-  { id: 17, category: "持久力", name: "階段昇降", url: "https://www.youtube.com/watch?v=xxxx9" }
+  { id: 1,  category: "ストレッチ", name: "ハムストリングス（大腿部後面）のストレッチ", url: "https://youtu.be/ihchQBuigY0" },
+  { id: 2,  category: "ストレッチ", name: "大腿四頭筋（大腿部前面）のストレッチ", url: "https://youtu.be/lVpF9TiepLg" },
+  { id: 3,  category: "ストレッチ", name: "腸腰筋（股関節前面）のストレッチ", url: "https://youtu.be/XIA80pBZ3ws" },
+  { id: 4,  category: "ストレッチ", name: "内転筋（大腿部内側）のストレッチ", url: "https://youtu.be/racb4M_hycM" },
+  { id: 5,  category: "ストレッチ", name: "下腿三頭筋（ふくらはぎ）のストレッチ", url: "https://youtu.be/Wbi5St1J9Kk" },
+  { id: 6,  category: "可動域・循環", name: "足首の上下（ポンプ）運動", url: "https://youtu.be/-inqX6tmDm8" },
+  { id: 7,  category: "筋力（殿筋）", name: "大殿筋（お尻）の筋力増強運動（収縮のみ）", url: "https://youtu.be/4ckJ67_8IB8" },
+  { id: 8,  category: "筋力（殿筋）", name: "大殿筋（お尻）の筋力増強運動（ブリッジ）", url: "https://youtu.be/9zKZ-YRmU8I" },
+  { id: 9,  category: "筋力（殿筋）", name: "大殿筋（お尻）の筋力増強運動（立位）", url: "https://youtu.be/aikGoCaTFFI" },
+  { id: 10, category: "筋力（大腿四頭筋）", name: "大腿四頭筋（大腿部前面）の筋力増強運動（セッティング）", url: "https://youtu.be/rweyU-3O3zo" },
+  { id: 11, category: "筋力（大腿四頭筋）", name: "大腿四頭筋（大腿部前面）の筋力増強運動（SLR）", url: "https://youtu.be/fNM6w_RnVRk" },
+  { id: 12, category: "筋力（中殿筋）", name: "中殿筋（殿部外側）の筋力増強運動（背臥位）", url: "https://youtu.be/UBN5jCP-ErM" },
+  { id: 13, category: "筋力（中殿筋）", name: "中殿筋（殿部外側）の筋力増強運動（立位）", url: "https://youtu.be/0gKoLDR8HcI" },
+  { id: 14, category: "バランス", name: "バランス運動（タンデム）", url: "https://youtu.be/F0OVS9LT1w4" },
+  { id: 15, category: "バランス", name: "バランス運動（片脚立位）", url: "https://youtu.be/HUjoGJtiknc" },
+  { id: 16, category: "有酸素運動", name: "ウォーキング", url: "https://youtu.be/Cs4NOzgkS8s" },
+  { id: 17, category: "有酸素運動", name: "自転車エルゴメータ", url: "https://youtu.be/12_J_pr-MUE" },
+  { id: 18, category: "有酸素運動", name: "水中運動", url: "https://youtu.be/xqj3dn9mw50" }
 ];
 
+/* ---------------------------------------------------------
+  YouTubeサムネイル自動生成
+--------------------------------------------------------- */
 function getThumbnail(url) {
-  return "exercise.png"; // 共通サムネイル
+  try {
+    const u = new URL(url);
+    if (u.hostname === "youtu.be") {
+      const id = u.pathname.replace("/", "");
+      return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    }
+    if (u.hostname.includes("youtube.com")) {
+      const id = u.searchParams.get("v");
+      if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    }
+  } catch (e) {}
+  return "exercise.png";
 }
 
 /* ---------------------------------------------------------
   スタート画面：患者様用 / 理学療法士用
 --------------------------------------------------------- */
 const startSection = document.getElementById("startSection");
+const tabBar = document.getElementById("tabBar");
 
 document.getElementById("patientModeBtn").addEventListener("click", () => {
   userMode = "patient";
@@ -47,6 +73,7 @@ document.getElementById("patientModeBtn").addEventListener("click", () => {
   document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
   document.getElementById("videoSection").classList.add("active");
 
+  tabBar.style.display = "flex";  // ★ スタート後は常時表示
   setActiveTab("videoSection");
 });
 
@@ -57,6 +84,7 @@ document.getElementById("therapistModeBtn").addEventListener("click", () => {
   document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
   document.getElementById("usageSection").classList.add("active");
 
+  tabBar.style.display = "flex";  // ★ スタート後は常時表示
   setActiveTab("usageSection");
 });
 
@@ -443,21 +471,54 @@ function diagnoseTHA(landmarks, expert = false) {
 }
 
 /* ---------------------------------------------------------
-  エクササイズ推薦（YouTube + サムネイル）
+  エクササイズ推薦（添付18本＋AI選定）
 --------------------------------------------------------- */
 function recommendExercises(pR, pL, abdR, abdL, addR, addL, speed) {
   const ids = [];
 
-  if (pR > 10 || pL > 10) ids.push(7, 8, 14);
-  if (abdR < 5 || abdL < 5) ids.push(9);
-  if (addR > 5 || addL > 5) ids.push(4, 14, 15);
-  if (speed < 80) ids.push(10, 11, 16, 17);
+  const pelvisMean = (pR + pL) / 2;
+  const abdMean    = (abdR + abdL) / 2;
+  const addMean    = (addR + addL) / 2;
+
+  // 骨盤の左右傾きが大きい → 中殿筋＋殿筋＋バランス
+  if (pelvisMean > 10) {
+    ids.push(12, 13); // 中殿筋
+    ids.push(7, 8, 9); // 大殿筋
+    ids.push(14, 15);  // バランス
+  }
+
+  // 外転が小さい → 中殿筋
+  if (abdMean < 5) {
+    ids.push(12, 13);
+  }
+
+  // 内転が大きい → 内転筋ストレッチ＋中殿筋
+  if (addMean > 10) {
+    ids.push(4);       // 内転筋ストレッチ
+    ids.push(12, 13);  // 中殿筋
+  }
+
+  // 歩行速度が遅い → 有酸素運動＋大筋群
+  if (speed < 80) {
+    ids.push(16, 17, 18); // 有酸素
+    ids.push(7, 8, 9);    // 殿筋
+    ids.push(10, 11);     // 大腿四頭筋
+  }
+
+  // 軽度なら → 基本ストレッチ＋ポンプ
+  if (ids.length === 0) {
+    ids.push(1, 2, 3, 5, 6);
+  }
 
   const unique = [...new Set(ids)];
-  return unique.map(id => exerciseList.find(e => e.id === id)).filter(Boolean);
+  return unique
+    .map(id => exerciseList.find(e => e.id === id))
+    .filter(Boolean);
 }
 
-/* HTML生成 */
+/* ---------------------------------------------------------
+  エクササイズHTML生成（YouTube＋サムネイル）
+--------------------------------------------------------- */
 function buildExerciseHTML(exercises) {
   return exercises.map(ex => `
     <div style="margin-bottom:12px;">
@@ -508,7 +569,7 @@ function setColoredValue(id, value, type) {
 }
 
 /* ---------------------------------------------------------
-  解析後の表示処理（患者様用 / PT用）
+  解析後の表示処理（患者様用 / 理学療法士用）
 --------------------------------------------------------- */
 function finalizeAnalysis() {
   const r = lastAnalysisResult;
@@ -532,17 +593,15 @@ function finalizeAnalysis() {
   r.types = types;
 
   /* -------------------------------
-     患者様用
+     患者様用：①特徴 → ②エクササイズ → ③グラフ
   -------------------------------- */
   if (userMode === "patient") {
 
-    // ① あなたの歩行の特徴
     typeBox.style.display = "block";
     typeBox.innerHTML =
       `<h3>① あなたの歩行の特徴</h3>
        <ul>${types.map(t => `<li>${t}</li>`).join("")}</ul>`;
 
-    // ② あなたにおすすめのセルフエクササイズ
     const exercises = recommendExercises(
       r.pelvisR, r.pelvisL,
       r.abdR, r.abdL,
@@ -558,28 +617,24 @@ function finalizeAnalysis() {
       exerciseBox.style.display = "none";
     }
 
-    // ③ グラフ
     graphCard.style.display = "block";
+    graphCard.querySelector("h3").textContent = "③ 回復の変化を比べる（グラフ）";
 
-    // 表は非表示
     historyCard.style.display = "none";
-
-    // 左右別も非表示
     resultBox.style.display = "none";
   }
 
   /* -------------------------------
-     理学療法士用
+     理学療法士用：
+     ①特徴 → ②エクササイズ → ③グラフ → ④表 → ⑤左右別
   -------------------------------- */
   if (userMode === "therapist") {
 
-    // ① あなたの歩行の特徴（専門的）
     typeBox.style.display = "block";
     typeBox.innerHTML =
       `<h3>① あなたの歩行の特徴（専門的）</h3>
        <ul>${types.map(t => `<li>${t}</li>`).join("")}</ul>`;
 
-    // ② あなたにおすすめのセルフエクササイズ
     const exercises = recommendExercises(
       r.pelvisR, r.pelvisL,
       r.abdR, r.abdL,
@@ -595,20 +650,21 @@ function finalizeAnalysis() {
       exerciseBox.style.display = "none";
     }
 
-    // ③ グラフ
     graphCard.style.display = "block";
+    graphCard.querySelector("h3").textContent = "③ 回復の変化を比べる（グラフ）";
 
-    // ④ 表
     historyCard.style.display = "block";
+    historyCard.querySelector("h3").textContent = "④ 回復の変化を比べる（表）";
 
-    // ⑤ 左右別の結果
     resultBox.style.display = "block";
+    resultBox.querySelector("h3").textContent = "⑤ 左右別の結果";
+
     setColoredValue("pelvisRCell", r.pelvisR, "pelvis");
     setColoredValue("pelvisLCell", r.pelvisL, "pelvis");
-    setColoredValue("abdRCell", r.abdR, "abd");
-    setColoredValue("abdLCell", r.abdL, "abd");
-    setColoredValue("addRCell", r.addR, "add");
-    setColoredValue("addLCell", r.addL, "add");
+    setColoredValue("abdRCell",   r.abdR,   "abd");
+    setColoredValue("abdLCell",   r.abdL,   "abd");
+    setColoredValue("addRCell",   r.addR,   "add");
+    setColoredValue("addLCell",   r.addL,   "add");
 
     const speedCell = document.getElementById("speedCell");
     speedCell.textContent = r.speedPercent.toFixed(1);
@@ -746,7 +802,8 @@ document.getElementById("pdfReportBtn").addEventListener("click", async () => {
       doc.addPage();
       y = 20;
     }
-    doc.text("回復の変化（グラフ）", 10, y); y += 6;
+    doc.text("回復の変化（グラフ）", 10, y); 
+    y += 6;
     doc.addImage(imgData, "PNG", 10, y, 180, 80);
   }
 
