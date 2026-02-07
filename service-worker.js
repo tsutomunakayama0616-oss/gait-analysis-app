@@ -1,11 +1,11 @@
 /* ---------------------------------------------------------
-   歩行解析アプリ - Service Worker（修正後の完全版）
+   歩行解析アプリ - Service Worker（最終完成版）
    - オフライン対応
    - ルート直下の画像キャッシュ対応
    - PWA安定動作
 --------------------------------------------------------- */
 
-const CACHE_NAME = "gait-analysis-app-v5";
+const CACHE_NAME = "gait-analysis-app-v6";
 
 /* ---------------------------------------------------------
    キャッシュするファイル一覧
@@ -17,16 +17,16 @@ const ASSETS = [
   "./manifest.json",
   "./pdf-font.js",
 
-  // ルート直下の画像
+  /* 画像（ルート直下） */
+  "./exercise.png",
   "./pelvis.png",
   "./leg-move.png",
-  "./exercise.png",
 
-  // アイコン
+  /* アイコン */
   "./icon-192.png",
   "./icon-512.png",
 
-  // 外部ライブラリ
+  /* 外部ライブラリ */
   "https://cdn.jsdelivr.net/npm/chart.js",
   "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0",
