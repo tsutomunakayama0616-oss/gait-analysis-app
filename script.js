@@ -1,5 +1,3 @@
-// script.js（完全修正版：解析修正＋外向きカメラ＋YouTubeサムネ＋実エクササイズ18本）
-
 // ---------------------------------------------------------
 // グローバル変数
 // ---------------------------------------------------------
@@ -123,7 +121,7 @@ surgeryDateInput.addEventListener("change", () => {
   }
   const surgeryDate = new Date(val);
   const today = new Date();
-  const diffDays = Math.round((today - surgeryDate) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round((today - surgeryDate) / 86400000);
 
   if (diffDays === 0) {
     surgeryDiffText.textContent = "手術当日";
@@ -138,8 +136,7 @@ surgeryDateInput.addEventListener("change", () => {
 // 撮影補助モード：チェックボックス
 // ---------------------------------------------------------
 function updateLiveButtonState() {
-  const allChecked = Array.from(liveChecks).every(ch => ch.checked);
-  startLiveBtn.disabled = !allChecked;
+  startLiveBtn.disabled = !Array.from(liveChecks).every(ch => ch.checked);
 }
 liveChecks.forEach(ch => ch.addEventListener("change", updateLiveButtonState));
 
@@ -148,11 +145,6 @@ liveChecks.forEach(ch => ch.addEventListener("change", updateLiveButtonState));
 // ---------------------------------------------------------
 startLiveBtn.addEventListener("click", async () => {
   try {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("この端末ではカメラが利用できません。");
-      return;
-    }
-
     liveStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
       audio: false,
@@ -164,41 +156,31 @@ startLiveBtn.addEventListener("click", async () => {
     recordedChunks = [];
     mediaRecorder = new MediaRecorder(liveStream);
 
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        recordedChunks.push(e.data);
-      }
+    mediaRecorder.ondataavailable = e => {
+      if (e.data.size > 0) recordedChunks.push(e.data);
     };
 
     mediaRecorder.onstop = () => {
       const blob = new Blob(recordedChunks, { type: recordedChunks[0]?.type || "video/mp4" });
-      const url = URL.createObjectURL(blob);
+      loadedVideoURL = URL.createObjectURL(blob);
 
-      loadedVideoURL = url;
-      analysisVideo.src = url;
+      analysisVideo.src = loadedVideoURL;
       analysisVideo.load();
 
       tabButtons.forEach(b => b.classList.remove("active"));
-      const analyzeTab = Array.from(tabButtons).find(b => b.dataset.target === "videoSection");
-      if (analyzeTab) analyzeTab.classList.add("active");
+      document.querySelector('[data-target="videoSection"]').classList.add("active");
       showSection("videoSection");
     };
 
     mediaRecorder.start();
   } catch (e) {
-    console.error(e);
-    alert("カメラの起動に失敗しました。");
+    alert("カメラを起動できませんでした。");
   }
 });
 
 stopLiveBtn.addEventListener("click", () => {
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    mediaRecorder.stop();
-  }
-  if (liveStream) {
-    liveStream.getTracks().forEach(t => t.stop());
-    liveStream = null;
-  }
+  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  if (liveStream) liveStream.getTracks().forEach(t => t.stop());
   liveVideo.srcObject = null;
 });
 
@@ -209,9 +191,8 @@ videoFileInput.addEventListener("change", () => {
   const file = videoFileInput.files[0];
   if (!file) return;
 
-  if (loadedVideoURL) {
-    URL.revokeObjectURL(loadedVideoURL);
-  }
+  if (loadedVideoURL) URL.revokeObjectURL(loadedVideoURL);
+
   loadedVideoURL = URL.createObjectURL(file);
   analysisVideo.src = loadedVideoURL;
   analysisVideo.load();
@@ -225,6 +206,7 @@ analyzeVideoBtn.addEventListener("click", async () => {
     videoError.textContent = "動画が選択されていません。";
     return;
   }
+
   videoError.textContent = "";
   videoStatus.textContent = "解析を準備中…";
 
@@ -233,10 +215,10 @@ analyzeVideoBtn.addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------
-// 動画解析（ファイル選択でも確実に動く版）
+// 動画解析（骨格描画入り）
 // ---------------------------------------------------------
 async function analyzeVideoWithPose() {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const startAnalysis = async () => {
       const video = analysisVideo;
       const canvas = analysisCanvas;
@@ -251,14 +233,10 @@ async function analyzeVideoWithPose() {
       let addR = 0, addL = 0;
       let frameCount = 0;
 
-      runningMode = "VIDEO";
       poseLandmarker.setOptions({ runningMode: "VIDEO" });
 
       async function processFrame() {
-        if (video.paused || video.ended) {
-          finalize();
-          return;
-        }
+        if (video.paused || video.ended) return finalize();
 
         const now = performance.now();
         if (video.currentTime === lastVideoTime) {
@@ -270,32 +248,29 @@ async function analyzeVideoWithPose() {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         const result = poseLandmarker.detectForVideo(video, now);
-        if (result && result.landmarks && result.landmarks.length > 0) {
+        if (result?.landmarks?.length) {
           const lm = result.landmarks[0];
           lastLandmarks = lm;
 
-          const rightHip = lm[24];
-          const leftHip  = lm[23];
-          const rightKnee = lm[26];
-          const leftKnee  = lm[25];
+          // ★ 骨格モデルの描画（追加）
+          const drawingUtils = new window.DrawingUtils(ctx);
+          drawingUtils.drawLandmarks(lm, { radius: 3, color: "#00ff00" });
+          drawingUtils.drawConnectors(
+            lm,
+            window.PoseLandmarker.POSE_CONNECTIONS,
+            { color: "#00ff00", lineWidth: 2 }
+          );
 
-          const pelvisAngleR = (rightHip.y - leftHip.y) * 180;
-          const pelvisAngleL = (leftHip.y - rightHip.y) * 180;
+          const RH = lm[24], LH = lm[23], RK = lm[26], LK = lm[25];
 
-          pelvisR += Math.abs(pelvisAngleR);
-          pelvisL += Math.abs(pelvisAngleL);
+          pelvisR += Math.abs((RH.y - LH.y) * 180);
+          pelvisL += Math.abs((LH.y - RH.y) * 180);
 
-          const abdAngleR = Math.abs(rightHip.x - rightKnee.x) * 180;
-          const abdAngleL = Math.abs(leftHip.x - leftKnee.x) * 180;
+          abdR += Math.abs(RH.x - RK.x) * 180;
+          abdL += Math.abs(LH.x - LK.x) * 180;
 
-          abdR += abdAngleR;
-          abdL += abdAngleL;
-
-          const addAngleR = Math.abs(rightHip.x - rightKnee.x) * 90;
-          const addAngleL = Math.abs(leftHip.x - leftKnee.x) * 90;
-
-          addR += addAngleR;
-          addL += addAngleL;
+          addR += Math.abs(RH.x - RK.x) * 90;
+          addL += Math.abs(LH.x - LK.x) * 90;
 
           frameCount++;
         }
@@ -317,8 +292,6 @@ async function analyzeVideoWithPose() {
         addR   /= frameCount;
         addL   /= frameCount;
 
-        const speedPercent = 100;
-
         lastAnalysisResult = {
           pelvisR,
           pelvisL,
@@ -326,7 +299,7 @@ async function analyzeVideoWithPose() {
           abdL,
           addR,
           addL,
-          speedPercent,
+          speedPercent: 100,
           types: [],
         };
 
@@ -348,7 +321,7 @@ async function analyzeVideoWithPose() {
 }
 
 // ---------------------------------------------------------
-// エクササイズ一覧（添付ファイル18本に置換）
+// エクササイズ一覧（あなたの18本）
 // ---------------------------------------------------------
 const exerciseList = [
   { id: 1,  category: "ストレッチ",           name: "ハムストリングス（大腿部後面）のストレッチ",              url: "https://youtu.be/ihchQBuigY0" },
@@ -372,7 +345,7 @@ const exerciseList = [
 ];
 
 // ---------------------------------------------------------
-// YouTube サムネイル取得（通常URL＋短縮URL対応）
+// YouTube サムネイル取得（短縮URL対応）
 // ---------------------------------------------------------
 function getThumbnail(url) {
   try {
@@ -388,7 +361,7 @@ function getThumbnail(url) {
 }
 
 // ---------------------------------------------------------
-// エクササイズHTML（サムネイルはそのまま表示）
+// エクササイズHTML
 // ---------------------------------------------------------
 function buildExerciseHTML(exercises) {
   return exercises.map(ex => `
