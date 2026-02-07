@@ -69,7 +69,7 @@
       max-width: 480px;
       margin: 0 auto;
       padding: 12px;
-      padding-bottom: 80px; /* タブバー分 */
+      padding-bottom: 80px;
     }
 
     .start-card {
@@ -185,7 +185,7 @@
       height: 60px;
       background: #ffffff;
       border-top: 1px solid #e5e5ea;
-      display: none; /* スタート画面後に表示 */
+      display: flex; /* ← 常時表示 */
       justify-content: space-around;
       align-items: center;
       z-index: 999;
@@ -272,7 +272,7 @@
       <h3>4. 撮影手順</h3>
       <ol>
         <li>後方から全身が映ることを確認</li>
-        <li>歩行路の端に立つ</li>
+        <li>歩行路の中央に立つ</li>
         <li>歩き始めたら録画開始</li>
         <li>歩行の中央〜終わりまでを撮影</li>
         <li>アプリの「解析」タブで動画を選択し解析を開始</li>
@@ -305,11 +305,6 @@
       <button id="startLiveBtn" class="mode-button" disabled>カメラを起動</button>
       <button id="stopLiveBtn" class="mode-button" style="background:#ff3b30;">カメラ停止</button>
     </div>
-
-    <div class="card">
-      <h3>📹 撮影の参考（骨格モデル）</h3>
-      <video id="sampleSkeletonVideo" src="skeleton-walk.mp4" controls playsinline muted style="width:100%; border-radius:12px;"></video>
-    </div>
   </section>
 
   <!-- 動作解析 -->
@@ -331,9 +326,9 @@
       <div id="videoError" style="color:red;"></div>
     </div>
 
-    <!-- PT用：① 歩き方の結果（左右別） -->
+    <!-- ⑤ 左右別の結果（PT用のみ表示） -->
     <div id="resultBox" class="card" style="display:none;">
-      <h3>① 歩き方の結果（左右別）</h3>
+      <h3>⑤ 左右別の結果</h3>
       <table class="ios-table">
         <tr><th>項目</th><th>右</th><th>左</th></tr>
         <tr><td>骨盤の傾き（°）</td><td id="pelvisRCell" class="result-cell"></td><td id="pelvisLCell" class="result-cell"></td></tr>
@@ -343,19 +338,19 @@
       </table>
     </div>
 
-    <!-- 特徴 -->
+    <!-- ① / ①（専門的） -->
     <div id="typeBox" class="card" style="display:none;"></div>
 
-    <!-- グラフ -->
+    <!-- ② エクササイズ -->
+    <div id="exerciseBox" class="card" style="display:none;"></div>
+
+    <!-- ③ グラフ -->
     <div id="graphCard" class="card" style="display:none;">
       <h3>回復の変化を比べる（グラフ）</h3>
       <canvas id="compareChart"></canvas>
     </div>
 
-    <!-- エクササイズ -->
-    <div id="exerciseBox" class="card" style="display:none;"></div>
-
-    <!-- 表（履歴） -->
+    <!-- ④ 表（PTのみ） -->
     <div class="card" id="historyCard" style="display:none;">
       <h3>回復の変化を比べる（表）</h3>
       <table id="resultTable" class="ios-table">
@@ -372,7 +367,7 @@
       </table>
     </div>
 
-<!-- 下タブバー -->
+<!-- 下タブバー（常時表示） -->
 <nav id="tabBar">
   <button data-target="usageSection" class="active">
     <span class="icon">📘</span>
