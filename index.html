@@ -308,14 +308,6 @@
     </div>
   </section>
 
-  <!-- ★ PT専用：側方動画アップロード -->
-  <div id="sideVideoArea" style="display:none; margin-top:20px;">
-    <h3>側方からの歩行動画（PT専用）</h3>
-    <input type="file" id="sideVideoInput" accept="video/*">
-    <video id="sideVideo" style="width:100%; margin-top:10px;" controls></video>
-    <canvas id="sideCanvas" style="display:none;"></canvas>
-  </div>
-
   <!-- 動作解析 -->
   <section id="videoSection" class="section">
     <div class="card">
@@ -347,18 +339,6 @@
       <canvas id="compareChart"></canvas>
     </div>
 
-    <!-- ★ 追加：骨格アニメーション -->
-    <div id="animationCard" class="card" style="display:none;">
-     <h3>骨格アニメーション</h3>
-     <canvas id="animationCanvas" width="300" height="300"></canvas>
-    </div>
-
-    <!-- ★ 追加：歩行軌跡（左右の揺れ） -->
-    <div id="trajectoryCard" class="card" style="display:none;">
-     <h3>歩行軌跡（左右の揺れ）</h3>
-     <canvas id="trajectoryCanvas" width="320" height="160"></canvas>
-    </div>
-
     <!-- ④ 表（PTのみ） -->
     <div class="card" id="historyCard" style="display:none;">
       <h3>回復の変化を比べる（表）</h3>
@@ -387,13 +367,7 @@
         <tr><td>歩行速度（%）</td><td colspan="2" id="speedCell" class="result-cell" style="text-align:center;"></td></tr>
       </table>
     </div>
-    
-   <!-- ★ PT専用：側方解析結果 -->
-   <div id="sideAngleCard" class="card" style="display:none;">
-     <h3>側方解析（PT専用）</h3>
-     <ul id="sideAngleList"></ul>
-   </div>
-   </section>
+  </section>
 
 </div>
 
@@ -416,5 +390,3 @@
 <script src="script.js"></script>
 </body>
 </html>
-
-
