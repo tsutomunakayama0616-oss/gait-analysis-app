@@ -21,14 +21,6 @@ let liveStream = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 
-// ★ 追加：歩行軌跡データ（A）
-let trajectory = [];
-
-// ★ 追加：骨格アニメーション用フレームデータ（B）
-let allFrames = [];
-
-let mode = localStorage.getItem("mode") || "patient";
-
 // ---------------------------------------------------------
 // DOM取得
 // ---------------------------------------------------------
@@ -62,23 +54,6 @@ const exerciseBox = document.getElementById("exerciseBox");
 const graphCard = document.getElementById("graphCard");
 const historyCard = document.getElementById("historyCard");
 const resultBox = document.getElementById("resultBox");
-
-// ★ 追加：新しいカードの DOM
-const animationCard = document.getElementById("animationCard");
-const trajectoryCard = document.getElementById("trajectoryCard");
-
-const sideVideoInput = document.getElementById("sideVideoInput");
-const sideVideo = document.getElementById("sideVideo");
-const sideCanvas = document.getElementById("sideCanvas");
-const sideAngleCard = document.getElementById("sideAngleCard");
-const sideAngleList = document.getElementById("sideAngleList");
-
-sideVideoInput.addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (file) {
-    sideVideo.src = URL.createObjectURL(file);
-  }
-});
 
 // ---------------------------------------------------------
 // MediaPipe 初期化
@@ -134,12 +109,6 @@ therapistModeBtn.addEventListener("click", () => {
   usageSection.classList.add("active");
   tabBar.style.display = "flex";
 });
-
- if (mode === "therapist") {
-   document.getElementById("sideVideoArea").style.display = "block";
- } else {
-   document.getElementById("sideVideoArea").style.display = "none";
- }
 
 // ---------------------------------------------------------
 // 手術日 → 手術前◯日 / 手術後◯日
@@ -264,10 +233,6 @@ async function analyzeVideoWithPose() {
       let addR = 0, addL = 0;
       let frameCount = 0;
 
-      // ★ A/B の初期化
-      trajectory = [];
-      allFrames = [];
-
       poseLandmarker.setOptions({ runningMode: "VIDEO" });
 
       async function processFrame() {
@@ -296,30 +261,10 @@ async function analyzeVideoWithPose() {
             { color: "#00ff00", lineWidth: 2 }
           );
 
-          // ★ A：歩行軌跡データ保存（骨盤中心X）
-         const leftHip = lm[23];
-         const rightHip = lm[24];
-         const pelvisX = (leftHip.x + rightHip.x) / 2;
-
-         trajectory.push({
-           frame: frameCount,
-           x: pelvisX
-         });
-
-         // ★ B：骨格アニメーション用 全フレーム保存
-         allFrames.push({
-           keypoints: lm.map(p => ({
-             x: p.x,
-             y: p.y,
-             z: p.z,
-             score: p.score
-           }))
-         });
           const RH = lm[24], LH = lm[23], RK = lm[26], LK = lm[25];
 
-          const pelvisTilt = (LH.y - RH.y) * 180;
-          pelvisR += Math.max(0, pelvisTilt);
-          pelvisL += Math.max(0, -pelvisTilt);
+          pelvisR += Math.abs((RH.y - LH.y) * 180);
+          pelvisL += Math.abs((LH.y - RH.y) * 180);
 
           abdR += Math.abs(RH.x - RK.x) * 180;
           abdL += Math.abs(LH.x - LK.x) * 180;
@@ -330,13 +275,6 @@ async function analyzeVideoWithPose() {
           frameCount++;
         }
 
-        function stopSkeletonAnimation() {
-        if (animationRequestId) {
-          cancelAnimationFrame(animationRequestId);
-          animationRequestId = null;
-        }
-      }
-        
         requestAnimationFrame(processFrame);
       }
 
@@ -365,17 +303,8 @@ async function analyzeVideoWithPose() {
           types: [],
         };
 
-        // ★ A/B：localStorage に保存
-        localStorage.setItem("trajectory", JSON.stringify(trajectory));
-        localStorage.setItem("allFrames", JSON.stringify(allFrames));
-
         videoStatus.textContent = "解析が完了しました。";
         finalizeAnalysis();
-
-        // ★ A/B の結果表示（ここに追加）
-        drawTrajectory();
-        startSkeletonAnimation(); 
-        
         resolve();
       }
 
@@ -389,143 +318,6 @@ async function analyzeVideoWithPose() {
       analysisVideo.addEventListener("loadeddata", startAnalysis, { once: true });
     }
   });
-  
-if (mode === "pt") {
-  const angles = JSON.parse(localStorage.getItem("sideAngles") || "{}");
-
-  sideAngleCard.style.display = "block";
-
-  sideAngleList.innerHTML = `
-    <li>体幹前傾角度：${angles.trunkForward?.toFixed(1)}°</li>
-    <li>股関節屈曲角度：${angles.hipFlex?.toFixed(1)}°</li>
-    <li>股関節伸展角度：${angles.hipExt?.toFixed(1)}°</li>
-    <li>膝関節屈曲角度：${angles.kneeFlex?.toFixed(1)}°</li>
-    <li>膝関節伸展角度：${angles.kneeExt?.toFixed(1)}°</li>
-    <li>足関節背屈角度：${angles.ankleDorsi?.toFixed(1)}°</li>
-    <li>足関節底屈角度：${angles.anklePlantar?.toFixed(1)}°</li>
-  `;
-}
-
-async function analyzeVideoWithPoseSide() {
-  return new Promise(resolve => {
-
-    const startAnalysis = async () => {
-      const video = sideVideo;
-      const canvas = sideCanvas;
-      const ctx = canvas.getContext("2d");
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      let frameCount = 0;
-
-      // ★ 7つの角度の累積
-      let trunkForward = 0;
-      let hipFlex = 0;
-      let hipExt = 0;
-      let kneeFlex = 0;
-      let kneeExt = 0;
-      let ankleDorsi = 0;
-      let anklePlantar = 0;
-
-      poseLandmarker.setOptions({ runningMode: "VIDEO" });
-
-      async function processFrame() {
-        if (video.paused || video.ended) return finalize();
-
-        const now = performance.now();
-        const result = poseLandmarker.detectForVideo(video, now);
-
-        if (result?.landmarks?.length) {
-          const lm = result.landmarks[0];
-
-          // ★ 7つの角度を計算
-          const angles = calculateSideAngles(lm);
-
-          trunkForward += angles.trunkForward;
-          hipFlex += angles.hipFlex;
-          hipExt += angles.hipExt;
-          kneeFlex += angles.kneeFlex;
-          kneeExt += angles.kneeExt;
-          ankleDorsi += angles.ankleDorsi;
-          anklePlantar += angles.anklePlantar;
-
-          frameCount++;
-        }
-
-        requestAnimationFrame(processFrame);
-      }
-
-      function finalize() {
-        if (frameCount === 0) return resolve();
-
-        const result = {
-          trunkForward: trunkForward / frameCount,
-          hipFlex: hipFlex / frameCount,
-          hipExt: hipExt / frameCount,
-          kneeFlex: kneeFlex / frameCount,
-          kneeExt: kneeExt / frameCount,
-          ankleDorsi: ankleDorsi / frameCount,
-          anklePlantar: anklePlantar / frameCount,
-        };
-
-        // ★ 保存
-        localStorage.setItem("sideAngles", JSON.stringify(result));
-
-        resolve();
-      }
-
-      await video.play();
-      processFrame();
-    };
-
-    if (sideVideo.readyState >= 2) startAnalysis();
-    else sideVideo.addEventListener("loadeddata", startAnalysis, { once: true });
-  });
-}
-
-function calculateSideAngles(lm) {
-
-  // 体幹前傾角度（肩→股関節の傾き）
-  const trunkForward = angleBetweenPoints(lm[11], lm[23], {x: lm[23].x, y: lm[23].y - 1});
-
-  // 股関節屈曲/伸展（股関節-膝-足首）
-  const hipFlex = jointAngle(lm[23], lm[25], lm[27]);
-  const hipExt = 180 - hipFlex;
-
-  // 膝屈曲/伸展（膝-股関節-足首）
-  const kneeFlex = jointAngle(lm[25], lm[23], lm[27]);
-  const kneeExt = 180 - kneeFlex;
-
-  // 足関節背屈/底屈（足首-膝-つま先）
-  const ankleDorsi = jointAngle(lm[27], lm[25], lm[31]);
-  const anklePlantar = 180 - ankleDorsi;
-
-  return {
-    trunkForward,
-    hipFlex,
-    hipExt,
-    kneeFlex,
-    kneeExt,
-    ankleDorsi,
-    anklePlantar
-  };
-}
-
-function jointAngle(a, b, c) {
-  const ab = { x: a.x - b.x, y: a.y - b.y };
-  const cb = { x: c.x - b.x, y: c.y - b.y };
-
-  const dot = ab.x * cb.x + ab.y * cb.y;
-  const magAB = Math.sqrt(ab.x * ab.x + ab.y * ab.y);
-  const magCB = Math.sqrt(cb.x * cb.x + cb.y * cb.y);
-
-  const angle = Math.acos(dot / (magAB * magCB));
-  return angle * (180 / Math.PI);
-}
-
-function angleBetweenPoints(a, b, c) {
-  return jointAngle(a, b, c);
 }
 
 // ---------------------------------------------------------
@@ -622,107 +414,6 @@ function setColoredValue(id, value, type) {
   const status = colorizeResult(value, type);
   cell.classList.remove("result-normal", "result-warning", "result-danger");
   cell.classList.add(`result-${status}`);
-}
-
-// ---------------------------------------------------------
-// A：歩行軌跡（左右の揺れ）描画
-// ---------------------------------------------------------
-function drawTrajectory() {
-  const data = JSON.parse(localStorage.getItem("trajectory") || "[]");
-  if (data.length === 0) return;
-
-  trajectoryCard.style.display = "block";
-
-  const canvas = document.getElementById("trajectoryCanvas");
-  const ctx = canvas.getContext("2d");
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const minX = Math.min(...data.map(p => p.x));
-  const maxX = Math.max(...data.map(p => p.x));
-
-  const scaleX = canvas.width / data.length;
-  const scaleY = canvas.height / (maxX - minX + 1);
-
-  ctx.beginPath();
-  ctx.strokeStyle = "#007aff";
-  ctx.lineWidth = 2;
-
-  data.forEach((p, i) => {
-    const x = i * scaleX;
-    const y = canvas.height - (p.x - minX) * scaleY;
-
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-
-  ctx.stroke();
-}
-
-// ---------------------------------------------------------
-// B：骨格アニメーション再生
-// ---------------------------------------------------------
-let animationFrameIndex = 0;
-let animationRequestId = null;
-
-function startSkeletonAnimation() {
-  const frames = JSON.parse(localStorage.getItem("allFrames") || "[]");
-  if (frames.length === 0) return;
-
-  animationCard.style.display = "block";
-
-  const canvas = document.getElementById("animationCanvas");
-  const ctx = canvas.getContext("2d");
-  const W = canvas.width;
-  const H = canvas.height;
-
-  function drawFrame() {
-    const frame = frames[animationFrameIndex];
-    if (!frame) return;
-
-    ctx.clearRect(0, 0, W, H);
-
-    const keypoints = frame.keypoints;
-
-    // 点
-    keypoints.forEach(kp => {
-      if (kp.score > 0.3) {
-        ctx.beginPath();
-        ctx.arc(kp.x * W, kp.y * H, 4, 0, Math.PI * 2);
-        ctx.fillStyle = "#00e676";
-        ctx.fill();
-      }
-    });
-
-    // 線（主要骨格）
-    const edges = [
-      [11, 12],
-      [11, 23], [12, 24],
-      [23, 25], [25, 27],
-      [24, 26], [26, 28],
-      [11, 13], [13, 15],
-      [12, 14], [14, 16]
-    ];
-
-    ctx.strokeStyle = "#00bfa5";
-    ctx.lineWidth = 3;
-
-    edges.forEach(([a, b]) => {
-      const p1 = keypoints[a];
-      const p2 = keypoints[b];
-      if (p1.score > 0.3 && p2.score > 0.3) {
-        ctx.beginPath();
-        ctx.moveTo(p1.x * W, p1.y * H);
-        ctx.lineTo(p2.x * W, p2.y * H);
-        ctx.stroke();
-      }
-    });
-
-    animationFrameIndex = (animationFrameIndex + 1) % frames.length;
-    animationRequestId = requestAnimationFrame(drawFrame);
-  }
-
-  drawFrame();
 }
 
 // ---------------------------------------------------------
@@ -1162,8 +853,3 @@ function loadHistory() {
 window.addEventListener("load", () => {
   loadHistory();
 });
-
-
-
-
-
