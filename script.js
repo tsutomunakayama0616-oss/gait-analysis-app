@@ -65,6 +65,19 @@ const resultBox = document.getElementById("resultBox");
 const animationCard = document.getElementById("animationCard");
 const trajectoryCard = document.getElementById("trajectoryCard");
 
+const sideVideoInput = document.getElementById("sideVideoInput");
+const sideVideo = document.getElementById("sideVideo");
+const sideCanvas = document.getElementById("sideCanvas");
+const sideAngleCard = document.getElementById("sideAngleCard");
+const sideAngleList = document.getElementById("sideAngleList");
+
+sideVideoInput.addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (file) {
+    sideVideo.src = URL.createObjectURL(file);
+  }
+});
+
 // ---------------------------------------------------------
 // MediaPipe 初期化
 // ---------------------------------------------------------
@@ -119,6 +132,12 @@ therapistModeBtn.addEventListener("click", () => {
   usageSection.classList.add("active");
   tabBar.style.display = "flex";
 });
+
+ if (mode === "pt") {
+   document.getElementById("sideVideoArea").style.display = "block";
+ } else {
+   document.getElementById("sideVideoArea").style.display = "none";
+ }
 
 // ---------------------------------------------------------
 // 手術日 → 手術前◯日 / 手術後◯日
@@ -359,6 +378,144 @@ async function analyzeVideoWithPose() {
     // ★ A/B の結果表示（ここに追加）
     drawTrajectory();
     startSkeletonAnimation(); 
+}
+
+if (mode === "pt") {
+  const angles = JSON.parse(localStorage.getItem("sideAngles") || "{}");
+
+  sideAngleCard.style.display = "block";
+
+  sideAngleList.innerHTML = `
+    <li>体幹前傾角度：${angles.trunkForward?.toFixed(1)}°</li>
+    <li>股関節屈曲角度：${angles.hipFlex?.toFixed(1)}°</li>
+    <li>股関節伸展角度：${angles.hipExt?.toFixed(1)}°</li>
+    <li>膝関節屈曲角度：${angles.kneeFlex?.toFixed(1)}°</li>
+    <li>膝関節伸展角度：${angles.kneeExt?.toFixed(1)}°</li>
+    <li>足関節背屈角度：${angles.ankleDorsi?.toFixed(1)}°</li>
+    <li>足関節底屈角度：${angles.anklePlantar?.toFixed(1)}°</li>
+  `;
+}
+
+async function analyzeVideoWithPoseSide() {
+  return new Promise(resolve => {
+
+    const startAnalysis = async () => {
+      const video = sideVideo;
+      const canvas = sideCanvas;
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      let frameCount = 0;
+
+      // ★ 7つの角度の累積
+      let trunkForward = 0;
+      let hipFlex = 0;
+      let hipExt = 0;
+      let kneeFlex = 0;
+      let kneeExt = 0;
+      let ankleDorsi = 0;
+      let anklePlantar = 0;
+
+      poseLandmarker.setOptions({ runningMode: "VIDEO" });
+
+      async function processFrame() {
+        if (video.paused || video.ended) return finalize();
+
+        const now = performance.now();
+        const result = poseLandmarker.detectForVideo(video, now);
+
+        if (result?.landmarks?.length) {
+          const lm = result.landmarks[0];
+
+          // ★ 7つの角度を計算
+          const angles = calculateSideAngles(lm);
+
+          trunkForward += angles.trunkForward;
+          hipFlex += angles.hipFlex;
+          hipExt += angles.hipExt;
+          kneeFlex += angles.kneeFlex;
+          kneeExt += angles.kneeExt;
+          ankleDorsi += angles.ankleDorsi;
+          anklePlantar += angles.anklePlantar;
+
+          frameCount++;
+        }
+
+        requestAnimationFrame(processFrame);
+      }
+
+      function finalize() {
+        if (frameCount === 0) return resolve();
+
+        const result = {
+          trunkForward: trunkForward / frameCount,
+          hipFlex: hipFlex / frameCount,
+          hipExt: hipExt / frameCount,
+          kneeFlex: kneeFlex / frameCount,
+          kneeExt: kneeExt / frameCount,
+          ankleDorsi: ankleDorsi / frameCount,
+          anklePlantar: anklePlantar / frameCount,
+        };
+
+        // ★ 保存
+        localStorage.setItem("sideAngles", JSON.stringify(result));
+
+        resolve();
+      }
+
+      await video.play();
+      processFrame();
+    };
+
+    if (sideVideo.readyState >= 2) startAnalysis();
+    else sideVideo.addEventListener("loadeddata", startAnalysis, { once: true });
+  });
+}
+
+function calculateSideAngles(lm) {
+
+  // 体幹前傾角度（肩→股関節の傾き）
+  const trunkForward = angleBetweenPoints(lm[11], lm[23], {x: lm[23].x, y: lm[23].y - 1});
+
+  // 股関節屈曲/伸展（股関節-膝-足首）
+  const hipFlex = jointAngle(lm[23], lm[25], lm[27]);
+  const hipExt = 180 - hipFlex;
+
+  // 膝屈曲/伸展（膝-股関節-足首）
+  const kneeFlex = jointAngle(lm[25], lm[23], lm[27]);
+  const kneeExt = 180 - kneeFlex;
+
+  // 足関節背屈/底屈（足首-膝-つま先）
+  const ankleDorsi = jointAngle(lm[27], lm[25], lm[31]);
+  const anklePlantar = 180 - ankleDorsi;
+
+  return {
+    trunkForward,
+    hipFlex,
+    hipExt,
+    kneeFlex,
+    kneeExt,
+    ankleDorsi,
+    anklePlantar
+  };
+}
+
+function jointAngle(a, b, c) {
+  const ab = { x: a.x - b.x, y: a.y - b.y };
+  const cb = { x: c.x - b.x, y: c.y - b.y };
+
+  const dot = ab.x * cb.x + ab.y * cb.y;
+  const magAB = Math.sqrt(ab.x * ab.x + ab.y * ab.y);
+  const magCB = Math.sqrt(cb.x * cb.x + cb.y * cb.y);
+
+  const angle = Math.acos(dot / (magAB * magCB));
+  return angle * (180 / Math.PI);
+}
+
+function angleBetweenPoints(a, b, c) {
+  return jointAngle(a, b, c);
 }
 
 // ---------------------------------------------------------
@@ -995,4 +1152,5 @@ function loadHistory() {
 window.addEventListener("load", () => {
   loadHistory();
 });
+
 
