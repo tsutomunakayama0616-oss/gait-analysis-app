@@ -339,6 +339,18 @@
       <canvas id="compareChart"></canvas>
     </div>
 
+    <!-- ★ 追加：骨格アニメーション -->
+    <div id="animationCard" class="card" style="display:none;">
+     <h3>骨格アニメーション</h3>
+     <canvas id="animationCanvas" width="300" height="300"></canvas>
+    </div>
+
+    <!-- ★ 追加：歩行軌跡（左右の揺れ） -->
+    <div id="trajectoryCard" class="card" style="display:none;">
+     <h3>歩行軌跡（左右の揺れ）</h3>
+     <canvas id="trajectoryCanvas" width="320" height="160"></canvas>
+    </div>
+
     <!-- ④ 表（PTのみ） -->
     <div class="card" id="historyCard" style="display:none;">
       <h3>回復の変化を比べる（表）</h3>
@@ -390,3 +402,4 @@
 <script src="script.js"></script>
 </body>
 </html>
+
