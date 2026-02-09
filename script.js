@@ -27,6 +27,8 @@ let trajectory = [];
 // ★ 追加：骨格アニメーション用フレームデータ（B）
 let allFrames = [];
 
+let mode = localStorage.getItem("mode") || "patient";
+
 // ---------------------------------------------------------
 // DOM取得
 // ---------------------------------------------------------
@@ -1152,5 +1154,6 @@ function loadHistory() {
 window.addEventListener("load", () => {
   loadHistory();
 });
+
 
 
