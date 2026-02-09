@@ -308,6 +308,14 @@
     </div>
   </section>
 
+  <!-- ★ PT専用：側方動画アップロード -->
+  <div id="sideVideoArea" style="display:none; margin-top:20px;">
+    <h3>側方からの歩行動画（PT専用）</h3>
+    <input type="file" id="sideVideoInput" accept="video/*">
+    <video id="sideVideo" style="width:100%; margin-top:10px;" controls></video>
+    <canvas id="sideCanvas" style="display:none;"></canvas>
+  </div>
+
   <!-- 動作解析 -->
   <section id="videoSection" class="section">
     <div class="card">
@@ -379,7 +387,13 @@
         <tr><td>歩行速度（%）</td><td colspan="2" id="speedCell" class="result-cell" style="text-align:center;"></td></tr>
       </table>
     </div>
-  </section>
+    
+   <!-- ★ PT専用：側方解析結果 -->
+   <div id="sideAngleCard" class="card" style="display:none;">
+     <h3>側方解析（PT専用）</h3>
+     <ul id="sideAngleList"></ul>
+   </div>
+   </section>
 
 </div>
 
@@ -402,4 +416,5 @@
 <script src="script.js"></script>
 </body>
 </html>
+
 
