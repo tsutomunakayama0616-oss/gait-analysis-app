@@ -135,7 +135,7 @@ therapistModeBtn.addEventListener("click", () => {
   tabBar.style.display = "flex";
 });
 
- if (mode === "pt") {
+ if (mode === "therapist") {
    document.getElementById("sideVideoArea").style.display = "block";
  } else {
    document.getElementById("sideVideoArea").style.display = "none";
@@ -317,8 +317,9 @@ async function analyzeVideoWithPose() {
          });
           const RH = lm[24], LH = lm[23], RK = lm[26], LK = lm[25];
 
-          pelvisR += Math.abs((RH.y - LH.y) * 180);
-          pelvisL += Math.abs((LH.y - RH.y) * 180);
+          const pelvisTilt = (LH.y - RH.y) * 180;
+          pelvisR += Math.max(0, pelvisTilt);
+          pelvisL += Math.max(0, -pelvisTilt);
 
           abdR += Math.abs(RH.x - RK.x) * 180;
           abdL += Math.abs(LH.x - LK.x) * 180;
@@ -329,6 +330,13 @@ async function analyzeVideoWithPose() {
           frameCount++;
         }
 
+        function stopSkeletonAnimation() {
+        if (animationRequestId) {
+          cancelAnimationFrame(animationRequestId);
+          animationRequestId = null;
+        }
+      }
+        
         requestAnimationFrame(processFrame);
       }
 
@@ -363,6 +371,11 @@ async function analyzeVideoWithPose() {
 
         videoStatus.textContent = "解析が完了しました。";
         finalizeAnalysis();
+
+        // ★ A/B の結果表示（ここに追加）
+        drawTrajectory();
+        startSkeletonAnimation(); 
+        
         resolve();
       }
 
@@ -377,11 +390,6 @@ async function analyzeVideoWithPose() {
     }
   });
   
-    // ★ A/B の結果表示（ここに追加）
-    drawTrajectory();
-    startSkeletonAnimation(); 
-}
-
 if (mode === "pt") {
   const angles = JSON.parse(localStorage.getItem("sideAngles") || "{}");
 
@@ -1154,6 +1162,7 @@ function loadHistory() {
 window.addEventListener("load", () => {
   loadHistory();
 });
+
 
 
 
